@@ -1,0 +1,47 @@
+{
+  "name": "ens-artwork-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run contracts:compile && vite build",
+    "typecheck": "tsc --noEmit",
+    "contracts:compile": "node scripts/compile.mjs",
+    "test": "tsx --test tests/*.test.ts",
+    "deploy": "npm run configure && npm run build && wrangler deploy",
+    "cf:types": "wrangler types",
+    "test:browser": "node scripts/browser.mjs",
+    "test:wallet": "tsx scripts/browser-wallet.ts",
+    "configure": "node scripts/configure.mjs"
+  },
+  "dependencies": {
+    "multiformats": "latest",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "viem": "2.56.9"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-viem": "3.0.9",
+    "@openzeppelin/contracts": "5.6.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "latest",
+    "hardhat": "3.18.0",
+    "jsonc-parser": "3.3.1",
+    "prettier": "3.9.9",
+    "solc": "0.8.37",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "latest",
+    "wrangler": "4.139.0"
+  },
+  "overrides": {
+    "tmp": "0.2.7"
+  }
+}
