@@ -5,7 +5,7 @@
 - Public Worker: https://eonmoon-beta.ncrmro.workers.dev
 - Local Tailscale URL: http://ncrmro-workstation.mercury:4325
 - Local user service: `eonmoon-beta-local.service` (active).
-- Local checkout: `/home/ncrmro/repos/ncrmro/ens-artwork-template.worktrees/feat/sepolia-app`, branch `feat/sepolia-app`.
+- Local checkout: `/home/ncrmro/repos/ncrmro/ens-artwork-template`, branch `main`.
 - Both instances: Ethereum Sepolia, chain ID 11155111; actual RPC response `0xaa36a7` verified independently through each Worker.
 - Application routes: Gallery, Studio, Setup, EVM lab. Wallet-driven registry/resolver/sale deployment, ENS parent linkage, publication, listing, purchase, resale, proceeds withdrawal, and standalone message-contract deployment/write/read are implemented.
 
