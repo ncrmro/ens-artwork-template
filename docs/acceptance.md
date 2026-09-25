@@ -1,46 +1,28 @@
 # Acceptance record — 2026-09-25
 
-## Running application
+The primary checkout is /home/ncrmro/repos/ncrmro/ens-artwork-template on main. No worktrees are used.
 
-- Public Worker: https://eonmun-beta.ncrmro.workers.dev
-- Local Tailscale URL: http://ncrmro-workstation.mercury:4325
-- Local user service: `eonmun-beta-local.service` (active).
-- Local checkout: `/home/ncrmro/repos/ncrmro/ens-artwork-template`, branch `main`.
-- Both instances: Ethereum Sepolia, chain ID 11155111; actual RPC response `0xaa36a7` verified independently through each Worker.
-- Application routes: Gallery, Studio, Setup, EVM lab. Wallet-driven registry/resolver/sale deployment, ENS parent linkage, publication, listing, purchase, resale, proceeds withdrawal, and standalone message-contract deployment/write/read are implemented.
+## Application
 
-## Verification performed
+- Shared artist/gallery platform: https://eonmun-beta.ncrmro.workers.dev/#setup
+- Independent gallery interface: https://eonmun-gallery-demo.ncrmro.workers.dev
+- Local: http://ncrmro-workstation.mercury:4325, service eonmun-beta-local.service.
+- Both local and deployed interfaces use Ethereum Sepolia, chain ID 11155111.
+- Guided wallet setup deploys participant and artwork/exhibition registries, attaches their subdomains, and links the registered parent ENS name. Artists additionally deploy mandates and settlement. Confirmed deployments are saved for resumption and export.
+- Artists submit artwork with scoped gallery mandates; galleries accept, publish attributed exhibitions and list. Collectors purchase; proceeds are withdrawn by recipients.
 
-- Solidity compilation: passed; registry runtime below the EIP-170 size limit.
-- TypeScript: passed.
-- Three transaction test scenarios: primary/resale payment arithmetic and withdrawal; authorization, duplicate prevention, immutable records, cancellation, stale nonce, expired parent; mutable token identity, 0/100% royalty boundaries, and independent EVM example.
-- Browser wallet integration: deploy registry and resolver; deploy sale; link mock ENS parent; publish; list; buy; relist; buy with another wallet; verify 1.075 test ETH artist balance and 0.925 seller balance after two 1 ETH sales; withdraw; deploy/write/read EVM message contract.
-- That wallet integration uses an isolated in-process EVM and explicitly injected test wallets. It is not a live Sepolia transaction record.
-- Local and public browser checks: desktop and mobile layouts, no horizontal overflow, no page exceptions, live Sepolia block, graceful missing-wallet message, and disabled publication until deployment configuration exists. Screenshots saved in ignored `output/`; deployed desktop screenshot visually inspected.
-- API: both instances report Sepolia and reject `eth_sendRawTransaction` through the read-only proxy.
-- Dependency audit: zero reported vulnerabilities after pinning the patched `tmp` build dependency.
-- Local outbound TLS uses the system CA bundle; verification remains enabled.
+## Verification
 
-## Still required for a public-chain artwork demo
+Solidity compilation, TypeScript, five contract scenarios and browser smoke checks cover the lifecycle. The wallet integration uses three independent wallets and two browser origins on an isolated EVM. It tests a rejected deployment followed by reload/resume without redeploying the confirmed namespace, both guided setup flows, issuance, artist submission, gallery acceptance, exhibition publication, listing, purchase, shared ownership readback and commission withdrawal. Contract tests additionally exercise authorization, revoked/expired/stale mandates, immutable genesis and resale arithmetic.
 
-No wallet/signer was supplied in this session. No public-chain registry, sale, or EVM example contract has been deployed by this session. The artist will register `eonmun.eth` on ENS v2 Sepolia. The corrected name replaces the earlier `eonmoon.eth` configuration.
+These are simulated transaction tests, not live Sepolia receipts. Public sites start with labeled previews until participants deploy and share their real contracts. EON MUN is the example artist; eonmun.eth was registered on ENS v2 Sepolia. Parent ownership is checked live before setup.
 
-The site therefore starts with clearly labeled unpublished artwork previews and functional wallet setup. Complete Setup using a funded Sepolia wallet, pin actual artwork/metadata to IPFS, publish and buy/resell, then capture real public-chain receipts and withdrawal balances. An independent second-artist deployment and real Burner hardware remain unverified. No claim of a completed M1 artwork acceptance or mainnet readiness is made.
+## Remaining acceptance
 
-## Operator commands
+Participants must sign real Sepolia deployment, issuance, submission, acceptance, exhibition and settlement transactions using funded wallets. No signing keys are held by the application or this development session. Pin actual artwork and manifest files to IPFS before publishing. Capture public-chain receipts before claiming a completed public-chain demo.
 
-```sh
-systemctl --user status eonmun-beta-local
-systemctl --user restart eonmun-beta-local
-systemctl --user stop eonmun-beta-local
-```
+The MVP loads at most 100 records per collection and displays one artist collection at a time. Exhibition records reference one artwork; multi-artist exhibition curation and a global submissions inbox remain future work. Physical custody, delivery and legal enforcement are not verified by these records. The Tailscale HTTP origin may restrict wallet injection; the deployed app uses HTTPS. The local user service is transient and must be started again after reboot.
 
-The user service is transient and survives this terminal session, not a machine reboot. Run `npm run dev` after reboot, or establish a persistent service in the host configuration separately.
+## Deployed release evidence
 
-## Remaining limitations
-
-The gallery currently reads up to the first 100 published works per instance. IPFS pinning and public-chain signing remain artist-operated. The local HTTP Tailscale URL is not a trusted HTTPS origin; wallet extension behavior on it depends on the browser. Use the deployed HTTPS app if a wallet restricts injection locally.
-
-## Corrected artist name
-
-The instance now uses Eonmun and `eonmun.eth`. The new Worker is `eonmun-beta`; the old `eonmoon-beta` Worker redirects to it with HTTP 308 (source: `worker/legacy-redirect.ts`, config: `wrangler.legacy.jsonc`). Contract tests and the simulated wallet publishing/resale flow pass with the corrected ENS label.
+Cloudflare deployment versions: artist/shared platform `95d9157e-4346-42c0-9229-b67569e171bd`; gallery interface `abc9d003-b2e3-4dea-8ef6-9ce3597e04b1`. Both use the same built interface (`index-CYeF527p.js`) and Sepolia configuration. Live desktop/mobile checks verify preview labeling, wallet-missing handling, all views and Sepolia block readback.

@@ -12,3 +12,16 @@ contract TestParent {
     function getSubregistry(string calldata) external view returns(address){return child;}
     function findExpiry(string calldata) external view returns(uint64){return expiry;}
 }
+
+/// Test-only parent for independent names held by different actors.
+contract TestLifecycleParent {
+    mapping(string=>address) public owners;
+    mapping(uint256=>address) private children;
+    function setOwner(string calldata label,address owner) external { owners[label]=owner; }
+    function findOwner(string calldata label) external view returns(address) { return owners[label]; }
+    function findExpiry(string calldata) external pure returns(uint64) { return type(uint64).max; }
+    function getSubregistry(string calldata label) external view returns(address) { return children[uint256(keccak256(bytes(label)))]; }
+    function setSubregistry(uint256 id,address child) external { // fixture: authorization is covered by real registry unit tests
+        children[id]=child;
+    }
+}

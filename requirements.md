@@ -1,14 +1,14 @@
-# Requirements — Eonmun ENS v2
+# Requirements — ENS artwork lifecycle template
 
-The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119. These requirements describe the initial Sepolia release.
+The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119.
 
-1. The template MUST let each artist use their own ENS parent name, contracts, payout wallet, and Cloudflare Worker through configuration without source-code edits.
-2. The initial instance MUST target Ethereum Sepolia, use `eonmun.eth`, and run on a separate Worker named `eonmun-beta`.
-3. Each artwork MUST have a unique ENS v2 subname whose custom resolver returns its IPFS contenthash through the Universal Resolver.
-4. Collectors MUST be able to purchase and resell the artwork's ENS subname token using ordinary wallets. Publication, purchase, and resale MUST work with Burner disabled; Burner integration MAY be added separately.
-5. The artist MUST set a royalty recipient and percentage before listing. Artwork content and royalty terms MUST remain unchanged after listing and across ownership transfers.
-6. Each storefront resale MUST atomically transfer the token and credit the configured artist share and remaining seller proceeds. Recipients MUST be able to withdraw those proceeds.
-7. Sales MUST reject unauthorized, expired, cancelled, replayed, or stale listings. Token-ID changes MUST NOT lose artwork identity or royalty terms.
-8. The application MUST NOT collect wallet private keys or Burner PINs. It MUST disclose retained administrative powers and dependence on the parent ENS name.
-9. Product copy MUST identify the Sepolia testnet and MUST NOT promise royalty enforcement outside the storefront, physical fulfillment, or unverified Burner compatibility.
-10. Acceptance MUST demonstrate IPFS resolution, purchase, resale, correct withdrawals, and unchanged artwork content with Burner disabled, plus an independent second-artist setup. Transaction and browser evidence MUST support the marketing demo.
+1. The template MUST let independent artists and galleries deploy and configure their own ENS v2 registries on Ethereum Sepolia. EON MUN at eonmun.eth MUST be presented as the example artist, not the project name.
+2. An artist MUST be able to issue a physical artwork as an ERC-1155 singleton at artwork.art.artist.eth. Its artist, title, year, medium, dimensions, image URI, manifest contenthash and royalty terms MUST remain immutable after issuance.
+3. A gallery MUST control a separate exhibitions.gallery.eth registry whose attributed exhibition records reference the artist's artwork registry and token.
+4. The current artwork owner MUST be able to grant and revoke scoped gallery mandates with expiry, minimum sale price and commission. Gallery acceptance MUST be recorded. Mandates MUST use application EAC separately from ENS name permissions.
+5. A gallery mandate MUST NOT confer token ownership, arbitrary transfer power, or genesis editing. Revoked, expired, consumed or stale mandates MUST NOT authorize new actions.
+6. A paid settlement MUST atomically transfer the token from its current owner to the collector and credit seller proceeds, gallery commission and applicable artist resale royalty. The owner MUST retain the token before settlement. Recipients MUST be able to withdraw.
+7. A change of token ownership MUST invalidate prior mandates, including after a transfer back to the former owner. Owner-derived presentation edits MUST require the current owner.
+8. Independent artist, gallery and collector interfaces MUST resolve the same contracts and records without a central application database. The interface MUST distinguish attributable claims from independently verified physical custody.
+9. The UI MUST label previews and unconfigured deployments, use ordinary wallets with Burner optional, and MUST NOT collect wallet keys.
+10. The UI MUST mark universal royalty enforcement, holding periods, right of first refusal, verified custody/logistics, legal execution, museum and conservator workflows as future work. It MUST distinguish simulated test evidence from live Sepolia acceptance.

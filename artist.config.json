@@ -1,5 +1,5 @@
 {
-  "name": "Eonmun",
+  "name": "EON MUN",
   "parentName": "eonmun.eth",
   "workerName": "eonmun-beta",
   "chainId": 11155111,
@@ -12,5 +12,16 @@
     "ETHRegistry": "0x657ea849311d3d5823348dded7c2aaafb3ede09e",
     "LabelStore": "0x375c082021e677a40ea2ae094d050602dba90992"
   },
-  "ensSourceCommit": "48b3e2d39513b9dd32ef1850877a29009bc807b9"
+  "ensSourceCommit": "48b3e2d39513b9dd32ef1850877a29009bc807b9",
+  "projectName": "Artwork Commons",
+  "lifecycle": {
+    "namespace": "",
+    "artwork": "",
+    "mandates": "",
+    "settlement": "",
+    "galleryNamespace": "",
+    "galleryRegistry": "",
+    "galleryParentName": ""
+  },
+  "gallerySiteUrl": "https://eonmun-gallery-demo.ncrmro.workers.dev"
 }

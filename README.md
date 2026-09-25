@@ -1,65 +1,89 @@
-# ENS artwork template — Eonmun
+# ENS artwork lifecycle template
 
-**Your art. Your name. Your storefront.**
+**One artwork. One identity. Many participants.**
 
-An independent artist storefront on Ethereum Sepolia. Each artwork is an ENS v2 subname with immutable IPFS content and artist-selected resale royalties. Burner cards are optional and not required by any core flow.
+A reusable artist marketplace template for NFTs associated with physical artwork. **EON MUN** is the example artist using **eonmun.eth**. **Artwork Commons** is a provisional interface title, not the artist's name.
 
-Live app: https://eonmun-beta.ncrmro.workers.dev. The former eonmoon-beta hostname redirects here. Local app: http://ncrmro-workstation.mercury:4325.
+The interface follows one artwork through issuance, gallery delegation, exhibition and collector settlement. Its permanent identity is separate from current ownership and delegated commercial authority.
 
-## Run
+- Artist interface: https://eonmun-beta.ncrmro.workers.dev
+- Independent gallery interface: https://eonmun-gallery-demo.ncrmro.workers.dev
+- Local app: http://ncrmro-workstation.mercury:4325
+- Public template: https://github.com/ncrmro/ens-artwork-template
 
-Node 24+, npm, and a Tailscale-connected Linux host:
+## The core demo
+
+1. The artist deploys a participant namespace under artist.eth, attaches an ArtworkRegistry at art.artist.eth, and links their ENS parent.
+2. The artist issues blue-mountain.art.artist.eth with title, year, medium, dimensions, original image and manifest, and resale royalty terms. The transaction attributes issuance to the artist. Genesis records have no update path.
+3. A different gallery wallet deploys its own namespace and GalleryRegistry at exhibitions.gallery.eth.
+4. The artwork owner creates a MandateRegistry record granting a gallery application-specific EAC roles: list, exhibit and/or initiate sale. Each mandate fixes a price floor, commission and expiry. The gallery accepts.
+5. The gallery publishes an exhibition referencing the artwork and creates a listing. The artist still owns the NFT. An optional custody statement is an attributed claim, not proof of physical possession.
+6. The owner approves SimpleSettlement (never the gallery itself). A collector pays; settlement transfers the NFT directly from owner to collector and credits proceeds. Previous mandates become inactive. Both websites read the same owner, genesis and exhibition history.
+
+Use the shared view URL or export the lifecycle addresses from Setup to configure independent websites. No custom database, indexer or application API is required to reconstruct these records; the Worker provides a replaceable read-only Sepolia RPC proxy.
+
+## Contracts
+
+| Contract | Responsibility |
+| --- | --- |
+| ParticipantRegistry | ENS registry beneath a participant's parent name; attaches art or exhibitions once |
+| ArtworkRegistry | ENS PermissionedRegistry-derived singleton NFTs, immutable physical-art genesis, current-owner presentation records, transfer epochs, ERC-2981 royalty information |
+| ArtResolver | Write-once IPFS contenthash and manifest records exposed through ENS resolution |
+| MandateRegistry | Separate EnhancedAccessControl resources for each gallery mandate; scope, acceptance, price floor, commission, expiry and revocation |
+| GalleryRegistry | Independent ENS exhibition names and append-only attributed references to artwork and mandates |
+| SimpleSettlement | Noncustodial gallery listings, buyer settlement, commission/royalty splits, pull withdrawals |
+
+Contracts deploy directly from the participant's wallet; a deployment factory is not needed for this MVP. The existing ArtRegistry, ArtSale and EvmExample are retained as legacy examples with their tests. Their deployment addresses are not compatible with the new lifecycle UI, which uses a separate configuration and browser storage namespace.
+
+Application roles are ROLE_LIST (1), ROLE_EXHIBIT (16), ROLE_SELL (256), defined in MandateRegistry rather than as extra ENS name roles. Raw historical EAC assignments are not sufficient authority: callers must check active(), which validates acceptance, expiry, revocation, current owner, current token version and ownership epoch. No EAC admin roles are granted in that contract.
+
+The artist registry grants token owners ENS transfer authority only. It keeps no root administrative roles or upgrade path. Owner presentation changes cannot mutate genesis. Transfers increment an epoch before receiver callbacks, preventing stale mandates from reviving after ownership round trips. Settlement uses ERC-1155 operator approval; the contract code restricts use to valid paid mandates.
+
+Primary sales from the original artist pay the artist minus gallery commission. Later sales through SimpleSettlement additionally credit the configured royalty. ERC-2981 is informational; direct transfers and outside marketplaces do not guarantee payment.
+
+## Configure and run
+
+Node 24+, npm, Tailscale, Linux:
 
 ```sh
 npm ci
+npm run configure
 npm run build
 npm run dev
 ```
 
-The launcher binds only the host's Tailscale IPv4, allocates a free port starting at 4325, and records `DEV_URL` in `.env.local`. It serves the built app through Wrangler; run `npm run build` after frontend changes. Both local and deployed instances connect to public Ethereum Sepolia (11155111). No local blockchain is started. `npm test` uses an isolated in-process EVM solely for tests.
+Use Setup to choose your artist display name and registered ENS parent. Connect its owning wallet and select Create / resume artist registry. Galleries use the gallery form with their own wallet and ENS name. The site guides up to six artist or four gallery transactions and saves each confirmed deployment so interrupted setup can resume. It never replaces an existing different ENS registry. You can also edit artist.config.json for deployment defaults. Lifecycle contract addresses can be entered in Setup, shared through query parameters, or exported back into this file. Choose your own Worker name before deploying a copy. A gallery uses its own ENS parent and wallet; its registry records reference the artist's contracts.
 
-## Configure your artist instance
+The local launcher binds to the host's Tailscale address and records DEV_URL in .env.local. It serves built assets through Wrangler; rebuild after frontend changes. Ethereum Sepolia (11155111) is used locally and publicly. No application blockchain runs locally.
 
-Edit `artist.config.json`: artist name, parent `.eth` name, RPC URL, IPFS gateway, and deployment addresses. `npm run configure` copies the configured Worker name into `wrangler.jsonc`. Do not put wallet keys or secrets in either file. The RPC URL in this example is public.
-
-1. Open **Setup** and connect a wallet funded with Sepolia test ETH.
-2. Register/control your parent on [ENS v2 Sepolia](https://app.ens.dev). Mainnet ownership does not establish testnet ownership.
-3. Deploy the artist registry/resolver, then the sale contract from your wallet.
-4. Link the parent name to your registry. The app refuses to replace a different existing subregistry.
-5. Export `artist.config.json`, replace the project config, rebuild and deploy so all visitors see the same instance. A share link carries registry/sale addresses for temporary previews. Partial deployment addresses are retained in browser storage for recovery.
-6. Pin artwork and metadata to IPFS independently. Metadata is JSON with `name`, `description`, and `image: ipfs://<CID>`. In **Studio**, enter the artwork CID, metadata URI, royalty wallet, and basis points (750 = 7.5%). Publishing permanently fixes these records.
-7. Open a work, approve and list it, then buy with another wallet. Relist from the collector wallet to exercise a resale. Withdraw artist/seller proceeds in Studio.
-
-The initial gallery images are original illustrative SVGs. They are explicitly unpublished previews, not minted artworks or IPFS availability evidence. No IPFS pinning service is configured by default.
-
-## Standalone EVM example
-
-**EVM lab** reads the live Sepolia chain/block. Deploy `EvmExample` from your wallet, save a public message, and read it back. It does not require an ENS parent. Every write links to its transaction on Sepolia Etherscan. No public-chain signer or contract is preconfigured.
-
-## Contracts and trust
-
-- `ArtRegistry`: ENS v2 PermissionedRegistry-derived singleton tokens; only artist publication; no root administrator, proxy upgrades, resolver editing, unregistering, or re-registration path.
-- `ArtResolver`: one-time contenthash and metadata records, standard profile interfaces and DNS-encoded extended resolution.
-- `ArtSale`: seven-day listings by default, token escrow, cancellation, exact ETH payment, atomic delivery and pull-payment accounting. Primary artist sale goes fully to the artist; subsequent storefront sales pay the immutable royalty recipient.
-- Token IDs may change on role changes. Record identity uses canonical label IDs, and listing escrow rejects stale tokens/nonces.
-- Parent registration and linkage are still controlled outside these contracts. The parent owner can redirect the namespace. Keep the parent registered and linked.
-- Free transfers and outside marketplaces do not guarantee royalties. Token ownership is not copyright transfer or proof of physical fulfillment.
-
-ENS upstream source is vendored at commit `48b3e2d39513b9dd32ef1850877a29009bc807b9`; see `vendor/ens-v2/PROVENANCE.md`. Sepolia addresses come from the official ENS docs snapshot on 2026-09-25, which differs from the repository's development deployment manifest. Both canonical configured addresses were checked for live bytecode.
-
-## Verify and deploy
+The existing local user service is eonmun-beta-local.service and runs from the primary checkout on main. Do not use worktrees. The service is transient; restart npm run dev after reboot.
 
 ```sh
-npm run contracts:compile
 npm run typecheck
 npm test
 npm run build
 npm run test:browser
 npm run test:wallet
-npm exec -- wrangler deploy --dry-run
 npm run deploy
+npm exec -- wrangler deploy --config wrangler.gallery.jsonc
 ```
 
-Browser checks use Chromium (`CHROMIUM_PATH` override supported) and `DEV_URL`; set `BASE_URL` to test the deployed Worker. Tests and screenshots are recorded separately from live-chain acceptance. Contracts are testnet examples, not independently audited production software.
+The wallet browser test creates independent artist, gallery and collector contexts, including a separate gallery origin. It uses an isolated EVM and injected test signers, not public Sepolia transactions. Browser smoke tests read live Sepolia and never sign wallet transactions.
 
-See [requirements](requirements.md), [agent setup](agent-setup.md), [personas](docs/personas.md), and [acceptance record](docs/acceptance.md).
+## Status and boundaries
+
+The initial Blue Mountain image is an original illustrative SVG, not an issued physical artwork. Sample data is labeled as a preview. The deployed interfaces need participants to deploy/link contracts, pin real IPFS files, issue a work, and perform live transactions before the public-chain demo is complete.
+
+IPFS availability requires continued pinning. ENS resolution depends on parent renewal and registry links; the parent owner retains control of the parent pointer. The UI reads the first 100 records per collection and does not claim a full history of direct transfers outside this settlement.
+
+The immutable issuance can reference an agreement URI and hash. The app does not execute a legal contract or verify its content. Buying the NFT does not itself prove physical possession or perform shipping.
+
+Coming soon: policy-enforced secondary sales across marketplaces, holding periods, right of first refusal, verified custody, logistics, legal execution, museums, conservation, auctions and recovery.
+
+ENS source is pinned with provenance in vendor/ens-v2/PROVENANCE.md. The pinned source and evolving public ENS v2 documentation can differ; our tests target the vendored revision.
+
+See [requirements](requirements.md), [acceptance evidence](docs/acceptance.md), and [architecture](docs/lifecycle.md).
+
+## Artist submissions
+
+Issue artwork in Workspace, then choose Submit to gallery with the gallery wallet, exhibition/sale permissions, expiry and agreed commission. Create a gallery submission link and send it to the gallery. They open that link, connect their wallet, accept the submission, and publish an exhibition in their own registry. Exhibitions and sale receipts appear on the artwork page. Galleries can configure their registry before or after opening the submission link. This MVP works one artist collection at a time; it does not provide a global gallery inbox or multi-artist exhibition curation.

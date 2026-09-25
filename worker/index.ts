@@ -15,14 +15,14 @@ const methods = new Set([
   "eth_feeHistory",
 ]);
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env & { SITE_VIEW?: string }): Promise<Response> {
     const url = new URL(request.url);
     const headers = {
       "cache-control": "no-store",
       "x-content-type-options": "nosniff",
     };
     if (url.pathname === "/api/config")
-      return Response.json(config, { headers });
+      return Response.json({ ...config, siteView: env.SITE_VIEW || "artist" }, { headers });
     if (url.pathname === "/api/health")
       return Response.json(
         {

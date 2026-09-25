@@ -34,7 +34,20 @@ export const parentAbi = parseAbi([
   "function getSubregistry(string label) view returns(address)",
   "function setSubregistry(uint256 anyId,address subregistry)",
 ]);
+export type Lifecycle = {
+  namespace: string;
+  artwork: string;
+  mandates: string;
+  settlement: string;
+  galleryNamespace: string;
+  galleryRegistry: string;
+  galleryParentName: string;
+};
 export type Config = {
+  projectName: string;
+  gallerySiteUrl: string;
+  siteView?: string;
+  lifecycle: Lifecycle;
   name: string;
   parentName: string;
   chainId: number;

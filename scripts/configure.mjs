@@ -17,7 +17,13 @@ for (const key of ["registry", "sale", "example"])
     throw Error("Invalid " + key + " address");
 for (const key of ["ETHRegistry", "LabelStore"])
   if (!isAddress(config.ens[key])) throw Error("Invalid ENS " + key);
-for (const key of ["rpcUrl", "ipfsGateway"])
+for (const [key, value] of Object.entries(config.lifecycle || {})) {
+  if (!value) continue;
+  if (key === "galleryParentName") {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.eth$/.test(value)) throw Error("Invalid gallery ENS parent");
+  } else if (!isAddress(value)) throw Error("Invalid lifecycle address: " + key);
+}
+for (const key of ["rpcUrl", "ipfsGateway", "gallerySiteUrl"])
   if (new URL(config[key]).protocol !== "https:")
     throw Error(key + " must use HTTPS");
 const wrangler = parse(fs.readFileSync("wrangler.jsonc", "utf8"));
