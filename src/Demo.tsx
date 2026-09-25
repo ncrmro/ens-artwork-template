@@ -1,4 +1,5 @@
 "use client";
+import defaults from "./demo-defaults.json";
 import React, { useState } from "react";
 type Work = {
   id: string;
@@ -8,8 +9,16 @@ type Work = {
   price: string;
   owner: string;
   variant: number;
+  imageURI?: string;
+  manifestURI?: string;
 };
-type Show = { id: string; title: string; description: string; works: string[] };
+type Show = {
+  id: string;
+  title: string;
+  description: string;
+  manifestURI?: string;
+  works: string[];
+};
 type DemoState = {
   works: Work[];
   shows: Show[];
@@ -199,6 +208,8 @@ export default function Demo({ page }: { page: string }) {
                     price: String(f.get("price")),
                     owner: "EON MUN",
                     variant: state.works.length % 3,
+                    imageURI: String(f.get("image")),
+                    manifestURI: String(f.get("manifest")),
                   };
                   update(
                     {
@@ -216,14 +227,16 @@ export default function Demo({ page }: { page: string }) {
               >
                 <h2>New demo artwork</h2>
                 <div className="config-grid">
-                  {input("Artwork title", "title")}
+                  {input("Artwork title", "title", "Blue Mountain Study")}
+                  {input("Image IPFS URI", "image", defaults.image)}
+                  {input("Manifest IPFS URI", "manifest", defaults.manifest)}
                   {input("Medium", "medium", "Oil on canvas")}
                   {input("Dimensions", "dimensions", "60 × 80 cm")}
                   {input("Price (demo ETH)", "price", "0.1")}
                 </div>
                 <p>
-                  Demo uses an illustrative image. Live artwork requires your
-                  own pinned IPFS image and manifest.
+                  Prefilled IPFS values reference bundled illustrative fixtures.
+                  These are sample records, not uploads or public pinning.
                 </p>
                 <button className="button dark">Create demo artwork</button>
               </form>
@@ -259,6 +272,7 @@ export default function Demo({ page }: { page: string }) {
                       Math.random().toString(36).slice(2),
                     title: String(f.get("title")),
                     description: String(f.get("description")),
+                    manifestURI: String(f.get("manifest")),
                     works: [],
                   };
                   update(
@@ -269,8 +283,17 @@ export default function Demo({ page }: { page: string }) {
                 }}
               >
                 <h2>New demo exhibition</h2>
-                {input("Exhibition title", "title")}
-                {input("Exhibition description", "description")}
+                {input("Exhibition title", "title", "Between Earth & Ether")}
+                {input(
+                  "Exhibition manifest IPFS URI",
+                  "manifest",
+                  defaults.exhibition,
+                )}
+                {input(
+                  "Exhibition description",
+                  "description",
+                  "Physical art, shared history.",
+                )}
                 <button className="button dark">Create demo exhibition</button>
               </form>
             )}
@@ -359,6 +382,10 @@ export default function Demo({ page }: { page: string }) {
                   <dd>EON MUN</dd>
                   <dt>Current owner</dt>
                   <dd>{work.owner}</dd>
+                  <dt>Image IPFS URI</dt>
+                  <dd>{work.imageURI || defaults.image}</dd>
+                  <dt>Manifest IPFS URI</dt>
+                  <dd>{work.manifestURI || defaults.manifest}</dd>
                   <dt>Genesis</dt>
                   <dd>Locked at issuance</dd>
                   <dt>Price</dt>

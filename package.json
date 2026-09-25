@@ -17,7 +17,12 @@
     "test:browser": "node scripts/browser.mjs",
     "test:wallet": "tsx scripts/browser-wallet.ts",
     "configure": "node scripts/configure.mjs",
-    "build:web": "next build"
+    "build:web": "next build",
+    "local:prepare": "node scripts/local/prepare.mjs",
+    "local:chain": "node scripts/local/chain.mjs",
+    "local:dev": "LOCAL_CHAIN=1 node scripts/dev.mjs",
+    "local:fixtures": "node scripts/local/fixtures.mjs",
+    "local:verify": "node scripts/local/verify.mjs"
   },
   "dependencies": {
     "multiformats": "latest",

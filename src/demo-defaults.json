@@ -1,0 +1,22 @@
+{
+  "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+  "manifest": "ipfs://bafkreiej2d2um7pv4yl2ct3z4b7nkh5v7emapfzg22xwkazzkq2rpj2fwa",
+  "exhibition": "ipfs://bafkreibtghqvq3du3ovdhxzlb73wtpt6oedh2u5pau3fekwd6vxei67gtq",
+  "works": [
+    {
+      "label": "blue-mountain",
+      "title": "Blue Mountain",
+      "manifest": "ipfs://bafkreiej2d2um7pv4yl2ct3z4b7nkh5v7emapfzg22xwkazzkq2rpj2fwa"
+    },
+    {
+      "label": "quiet-tide",
+      "title": "Quiet Tide",
+      "manifest": "ipfs://bafkreibievbawrda4tceq4k5ynuprkh3uxvt2j372njwcic3nyalnolsha"
+    },
+    {
+      "label": "after-the-rain",
+      "title": "After the Rain",
+      "manifest": "ipfs://bafkreidx4lruruim4hy2tutn7gro7fwu5mipmmo5yfirlnovs3wsj4v2vi"
+    }
+  ]
+}

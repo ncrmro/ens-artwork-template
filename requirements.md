@@ -17,3 +17,6 @@ The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119
 13. Galleries MUST be able to create exhibitions before submissions. Current artwork owners MUST be able to submit to a named exhibition, and only the gallery MUST be able to accept or decline submissions.
 14. Collectors MUST be able to buy through an exhibition or an owner's direct listing. Direct listings MUST NOT charge a gallery commission, and stale, cancelled or expired listings MUST NOT settle.
 15. Demo mode MUST label mocked records and purchases, MUST persist local edits across page navigation and refresh, and MUST NOT request wallet signatures or send blockchain transactions.
+
+16. The local-chain demo MUST use the pinned official ENSv2 deployment on chain 31337, seed independent artist and gallery ENS names and a collector account, and support real issuance, submissions, acceptance and purchases. It MUST isolate configuration and disposable accounts from Sepolia and offer reproducible reset.
+17. Demo creation forms MUST prefill valid sample IPFS image and manifest URIs. Local-chain fixtures MUST resolve without a public gateway; the interface MUST distinguish fixtures from uploaded or publicly pinned content.

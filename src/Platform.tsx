@@ -1,4 +1,5 @@
 "use client";
+import defaults from "./demo-defaults.json";
 import React, { useEffect, useRef, useState } from "react";
 import {
   isAddress,
@@ -14,6 +15,9 @@ import {
 } from "viem";
 import {
   client,
+  chainId,
+  configureChain,
+  selectLocalWallet,
   wallet,
   receipt,
   contracts,
@@ -62,7 +66,7 @@ const read = async (
 const field = (f: FormData, k: string) => String(f.get(k) || "");
 const ttl = () => BigInt(Math.floor(Date.now() / 1000) + 7 * 86400);
 const contextKey = (account: string) =>
-  "artwork-platform:v2:" + account.toLowerCase();
+  "artwork-platform:v3:" + chainId + ":" + account.toLowerCase();
 function Input({
   label,
   name,
@@ -85,6 +89,16 @@ function Input({
 }
 export default function Platform({ page }: { page: string }) {
   const [config, setConfig] = useState<Config>();
+  const configRef = useRef<Config | undefined>(undefined);
+  const storageKey = (a: string) =>
+    contextKey(a) + ":" + (configRef.current?.localDemo?.runId || "public");
+  function chooseRole(role: string) {
+    const demo = configRef.current?.localDemo;
+    if (!demo) return;
+    selectLocalWallet(demo.accounts[role]);
+    sessionStorage.setItem("local-demo-role", role);
+    restore(demo.accounts[role]);
+  }
   const [account, setAccount] = useState<Address>();
   const accountRef = useRef<Address | undefined>(undefined);
   const [ctx, setContext] = useState<Context>(blank);
@@ -114,12 +128,18 @@ export default function Platform({ page }: { page: string }) {
     setAccount(a);
     setChosen("");
     setNames([]);
-    let n = { ...blank };
+    let n = { ...blank, ...configRef.current?.localDemo?.context };
     try {
       if (a)
         n = {
           ...n,
-          ...JSON.parse(localStorage.getItem(contextKey(a)) || "{}"),
+          ...JSON.parse(
+            localStorage.getItem(storageKey(a)) ||
+              (chainId === 11155111
+                ? localStorage.getItem("artwork-platform:v2:" + a.toLowerCase())
+                : null) ||
+              "{}",
+          ),
         };
     } catch {}
     const q = new URLSearchParams(location.search);
@@ -133,7 +153,7 @@ export default function Platform({ page }: { page: string }) {
     ctxRef.current = n;
     setContext(n);
     if (accountRef.current)
-      localStorage.setItem(contextKey(accountRef.current), JSON.stringify(n));
+      localStorage.setItem(storageKey(accountRef.current), JSON.stringify(n));
     return n;
   }
   function url(
@@ -161,26 +181,39 @@ export default function Platform({ page }: { page: string }) {
     return path + "?" + q.toString();
   }
   useEffect(() => {
-    fetch("/api/config")
-      .then(async (r) => (await r.json()) as Config)
-      .then(setConfig)
-      .catch(() => setError("Could not load Sepolia configuration."));
     setActiveArt(new URLSearchParams(location.search).get("art") || "");
     setShowId(new URLSearchParams(location.search).get("show") || "");
     const p = (window as any).ethereum;
     let gone = false;
     const accounts = (a: Address[]) => {
-      if (!gone) restore(a[0]);
+      if (!gone && !configRef.current?.localDemo) restore(a[0]);
     };
-    if (p) {
-      p.request({ method: "eth_accounts" })
-        .then(accounts)
-        .catch(() => restore());
-      p.on?.("accountsChanged", accounts);
-    } else restore();
+    fetch("/api/config")
+      .then(async (r) => {
+        if (!r.ok) throw Error("Configuration unavailable");
+        return (await r.json()) as Config;
+      })
+      .then(async (c) => {
+        if (gone) return;
+        configureChain(c);
+        configRef.current = c;
+        setConfig(c);
+        if (c.localDemo) {
+          const role = sessionStorage.getItem("local-demo-role") || "artist";
+          chooseRole(role in c.localDemo.accounts ? role : "artist");
+        } else if (p) {
+          try {
+            accounts(await p.request({ method: "eth_accounts" }));
+          } catch {
+            restore();
+          }
+          p.on?.("accountsChanged", accounts);
+        } else restore();
+      })
+      .catch((e) => !gone && setError(e.message));
     const changed = () =>
       setMessage(
-        "Wallet network changed. Transactions require Ethereum Sepolia.",
+        "Wallet network changed. Transactions must use the configured network.",
       );
     p?.on?.("chainChanged", changed);
     return () => {
@@ -259,7 +292,10 @@ export default function Platform({ page }: { page: string }) {
   async function connect() {
     const { account: a } = await wallet();
     restore(a);
-    setMessage("Wallet connected on Sepolia.");
+    setMessage(
+      "Wallet connected on " +
+        (config?.localDemo ? "local ENSv2." : "Sepolia."),
+    );
   }
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -285,7 +321,11 @@ export default function Platform({ page }: { page: string }) {
     const { w, account: a } = await wallet();
     if (!same(a, accountRef.current))
       throw Error("Wallet account changed. Reconnect before signing.");
-    setMessage("Confirm " + fn + " in your wallet.");
+    setMessage(
+      config?.localDemo
+        ? "Submitting " + fn + " to the local chain…"
+        : "Confirm " + fn + " in your wallet.",
+    );
     const h = await w.writeContract({
       account: a,
       address: address as Address,
@@ -296,6 +336,7 @@ export default function Platform({ page }: { page: string }) {
     });
     setTx(h);
     await receipt(h);
+    setMessage(fn + " confirmed.");
     return h;
   }
   async function artwork(address: string, id: bigint, settlement: string) {
@@ -427,9 +468,9 @@ export default function Platform({ page }: { page: string }) {
     const pays = [];
     if (a) {
       for (const address of new Set<string>(
-        [c.settlement, ...pending.map((s) => s.settlement)].filter((x) =>
-          isAddress(x),
-        ),
+        [c.settlement, ...pending.map((s) => s.settlement)]
+          .filter((x) => isAddress(x))
+          .map((x) => x.toLowerCase()),
       )) {
         pays.push({
           address,
@@ -483,7 +524,7 @@ export default function Platform({ page }: { page: string }) {
     ) => {
       if (
         !same((await w.getAddresses())[0], a) ||
-        (await w.getChainId()) !== 11155111
+        (await w.getChainId()) !== config.chainId
       )
         throw Error("Wallet or network changed. Resume with the same wallet.");
       setMessage(
@@ -692,19 +733,61 @@ export default function Platform({ page }: { page: string }) {
         </button>
       </header>
       <div className="network">
-        <span>ETHEREUM SEPOLIA / TESTNET</span>
+        <span>
+          {config?.localDemo
+            ? "LOCAL ENSv2 / REAL TEST TRANSACTIONS"
+            : "ETHEREUM SEPOLIA / TESTNET"}
+        </span>
         <span>
           {block ? "BLOCK " + Number(block).toLocaleString() : "CONNECTING…"}
         </span>
       </div>
       <main className="page">
+        {config?.localDemo && (
+          <section className="panel">
+            <h2>Seeded local-chain demo</h2>
+            <p>
+              EON MUN · eonmun.eth / Atelier Gallery · atelier.eth. Disposable
+              funded accounts; transactions change the local blockchain.
+            </p>
+            <div className="actions">
+              {Object.entries(config.localDemo.accounts).map(
+                ([role, address]) => (
+                  <button
+                    key={role}
+                    className="button"
+                    disabled={busy}
+                    aria-pressed={same(account, address)}
+                    onClick={() => chooseRole(role)}
+                  >
+                    Use {role}
+                  </button>
+                ),
+              )}
+            </div>
+            <p>
+              IPFS defaults are bundled sample fixtures, not uploads or public
+              pinning.
+            </p>
+            <p>
+              Active:{" "}
+              {
+                Object.entries(config.localDemo.accounts).find(([, a]) =>
+                  same(account, a),
+                )?.[0]
+              }{" "}
+              · Chain 31337. Restart the local chain to reset.
+            </p>
+          </section>
+        )}
+
         {(error || message || busy) && (
           <div
             className={"notice " + (error ? "error" : "")}
             role={error ? "alert" : "status"}
           >
             {error || message || "Waiting for wallet…"}
-            {tx && (
+            {tx && !config?.localDemo && (
               <a
                 href={"https://sepolia.etherscan.io/tx/" + tx}
                 target="_blank"
@@ -751,7 +834,7 @@ export default function Platform({ page }: { page: string }) {
             </a>
             <p>
               No wallet needed for the demo. Live setup uses names you control
-              on ENS v2 Sepolia.
+              on {config?.localDemo ? "local ENSv2" : "ENS v2 Sepolia"}.
             </p>
           </>
         )}
@@ -906,19 +989,43 @@ export default function Platform({ page }: { page: string }) {
             >
               <h2>Create artwork</h2>
               <div className="config-grid">
-                <Input label="Title" name="title" />
-                <Input label="Artwork label" name="label" />
+                <Input
+                  label="Title"
+                  name="title"
+                  value={config?.localDemo ? "Mountain Study" : ""}
+                />
+                <Input
+                  label="Artwork label"
+                  name="label"
+                  value={config?.localDemo ? "mountain-study" : ""}
+                />
                 <Input label="Year" name="year" type="number" value="2026" />
-                <Input label="Medium" name="medium" />
-                <Input label="Dimensions" name="dimensions" />
+                <Input
+                  label="Medium"
+                  name="medium"
+                  value={config?.localDemo ? "Oil on canvas" : ""}
+                />
+                <Input
+                  label="Dimensions"
+                  name="dimensions"
+                  value={config?.localDemo ? "60 × 80 cm" : ""}
+                />
                 <Input
                   label="Artist royalty (basis points)"
                   name="royalty"
                   type="number"
                   value="500"
                 />
-                <Input label="Image IPFS URI" name="image" />
-                <Input label="Manifest IPFS URI" name="manifest" />
+                <Input
+                  label="Image IPFS URI"
+                  name="image"
+                  value={config?.localDemo ? defaults.image : ""}
+                />
+                <Input
+                  label="Manifest IPFS URI"
+                  name="manifest"
+                  value={config?.localDemo ? defaults.manifest : ""}
+                />
               </div>
               <button className="button dark" disabled={busy || !account}>
                 Issue & lock genesis ↗
@@ -959,7 +1066,11 @@ export default function Platform({ page }: { page: string }) {
               <h2>Create exhibition</h2>
               <Input label="Exhibition title" name="title" />
               <Input label="Exhibition label" name="label" />
-              <Input label="Exhibition manifest IPFS URI" name="manifest" />
+              <Input
+                label="Exhibition manifest IPFS URI"
+                name="manifest"
+                value={config?.localDemo ? defaults.exhibition : ""}
+              />
               <Input
                 label="Public exhibition statement"
                 name="statement"

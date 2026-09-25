@@ -9,7 +9,7 @@ The application is Next.js 16.3.6 App Router, with static page exports served by
 - Local: http://ncrmro-workstation.mercury:4325
 - Primary checkout: /home/ncrmro/repos/ncrmro/ens-artwork-template, main, no worktrees.
 
-Live pages use Ethereum Sepolia (11155111). Demo pages use isolated sessionStorage and never load wallet/chain code. The local service is eonmun-beta-local.service, transient until reboot.
+Public live pages use Ethereum Sepolia (11155111); the explicit local-chain mode uses official ENSv2 on Anvil (31337). Demo pages use isolated sessionStorage and never load wallet/chain code. The local service is eonmun-beta-local.service, transient until reboot.
 
 ## Verification
 
@@ -21,7 +21,7 @@ Live pages use Ethereum Sepolia (11155111). Demo pages use isolated sessionStora
 
 ## Public-chain acceptance still required
 
-Tests that sign transactions use an isolated EVM, not live Sepolia. Participants must confirm deployment, issuance, submission, acceptance, listing and purchase transactions in their own funded Sepolia wallets before claiming a complete public-chain demonstration. No private signing keys are collected or held by this application.
+Unit and injected-wallet tests use an isolated EVM. `npm run local:verify` uses the official running ENSv2 devnet, with real local-chain transactions and snapshot restoration. Neither is live Sepolia. Participants must confirm deployment, issuance, submission, acceptance, listing and purchase transactions in their own funded Sepolia wallets before claiming a complete public-chain demonstration. No private signing keys are collected or held by this application.
 
 The new GalleryRegistry and SimpleSettlement add methods absent from older deployed versions. Those contracts are immutable; incompatible old instances are not silently upgraded. Compatible participant namespaces can be reused without changing their parent pointer.
 
@@ -30,3 +30,13 @@ The UI reads at most 100 records per selected registry/recent listing set. IPFS 
 ## Cloudflare release
 
 Next.js build ID: `1bmBoP5tQ7EPH-gXsV6XW`. Shared platform version: `0026ffd1-9329-42fd-b453-9131eb7dcce7`. Gallery instance version: `fb5bc4ed-c547-446d-96a7-e0f5fb3385ab`. The deployed name-discovery endpoint returned both names for the example wallet. Production browser checks exercise the same demo creation/submission/acceptance/purchase story and responsive pages as local verification.
+
+## Local ENSv2 demo acceptance — 2026-09-25
+
+The primary checkout now runs the official pinned ENSv2 deployment on Anvil chain 31337. `eonmun.eth` and `atelier.eth` were registered through the registrar and linked to independent artist/gallery registries. Universal Resolver lookups returned contenthash records for `blue-mountain.art.eonmun.eth` and `tokyo.exhibitions.atelier.eth`.
+
+`npm run local:verify` passed actual browser-driven local-chain issuance, exhibition creation, submission, acceptance, listing, exhibition and direct purchases, ownership readback and gallery commission withdrawal. It also checked role restoration and prefilled IPFS fixtures, then restored the seed. Final readback confirmed three artworks, one exhibition and two submissions. The devnet RPC listens only on 127.0.0.1; the app binds the recorded Tailscale address. Its read-only RPC rejects writes and its local wallet endpoint rejects Anvil administrative methods.
+
+Typecheck, seven contract tests, the production build and the existing injected-wallet deployment/resume regression passed. Local test accounts are disposable and unlocked only on the local devnet; no public-chain transactions are claimed.
+
+Final Next.js build: `ddRzLbD8TnlEEweO2AoxH`. Public shared platform version: `6577132e-ccab-401a-bdac-5186850508e6`. Public gallery version: `edffbb44-1592-4f18-bdd9-d2189fa636ef`. Public sites retain Sepolia configuration and receive the mock-demo IPFS form defaults.

@@ -39,20 +39,25 @@ fs.renameSync(".env.local.tmp", ".env.local");
 console.log(record);
 const child = spawn(
   process.execPath,
-  [
-    "node_modules/wrangler/bin/wrangler.js",
-    "dev",
-    "--ip",
-    ip,
-    "--port",
-    String(port),
-    "--inspector-port",
-    "0",
-  ],
+  process.env.LOCAL_CHAIN === "1"
+    ? ["scripts/local/server.mjs"]
+    : [
+        "node_modules/wrangler/bin/wrangler.js",
+        "dev",
+        "--ip",
+        ip,
+        "--port",
+        String(port),
+        "--inspector-port",
+        "0",
+      ],
   {
     stdio: "inherit",
     env: {
       ...process.env,
+      LOCAL_BIND: ip,
+      LOCAL_HOSTNAME: host,
+      LOCAL_PORT: String(port),
       NODE_EXTRA_CA_CERTS:
         process.env.NODE_EXTRA_CA_CERTS || "/etc/ssl/certs/ca-certificates.crt",
     },

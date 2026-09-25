@@ -6,9 +6,9 @@ Work directly in the primary checkout on main; do not create or use worktrees. K
 
 Node 24 / npm is the declared environment. No global installation. Build contracts before tests, then typecheck, transaction tests, build, and browser checks. ENS source and npm dependencies are pinned. Never claim fixture EVM tests as public Sepolia transactions.
 
-App and Worker always target Ethereum Sepolia, chain 11155111. Unit tests use an isolated in-process EVM; there is no local-chain application mode. The artist deploys through their wallet; no private keys or Burner PINs enter the app. Register/link the parent before claiming ENS resolution is live.
+Public Workers target Ethereum Sepolia, chain 11155111. The local-chain application uses official pinned ENSv2 contracts on Anvil chain 31337; see docs/local-demo.md. Its separate local server exposes only disposable test accounts and is never shipped to Cloudflare. Unit tests also use an isolated in-process EVM. The artist deploys through their wallet; no private keys or Burner PINs enter the app. Register/link the parent before claiming ENS resolution is live.
 
-Use `npm run dev` for port allocation and Tailscale binding. The running session uses user service `eonmun-beta-local`; inspect it before starting another instance. Stop with `systemctl --user stop eonmun-beta-local` when requested.
+Use `npm run local:dev` for the seeded local-chain demo or `npm run dev` for Sepolia, both with port allocation and Tailscale binding. The running session uses user service `eonmun-beta-local`; inspect it before starting another instance. Stop with `systemctl --user stop eonmun-beta-local` when requested.
 
 The current app implements the physical-art lifecycle in docs/lifecycle.md: immutable genesis, independent gallery registries, application EAC mandates, and direct owner-to-collector settlement. EON MUN is the example artist, never the template name. Do not reuse legacy ArtRegistry/ArtSale addresses for lifecycle configuration. Both public sites must be updated for UI changes.
 

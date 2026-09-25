@@ -37,7 +37,7 @@ npm run build
 npm run dev
 ```
 
-The local launcher records its Tailscale address and port in `.env.local`. It serves Next.js's `out/` through Wrangler. Run `npm run build:web` and restart the local service after frontend changes. Both local and deployed live pages use Ethereum Sepolia, chain ID 11155111.
+The local launcher records its Tailscale address and port in `.env.local`. It serves Next.js's `out/` through Wrangler. Run `npm run build:web` and restart the local service after frontend changes. This default mode and public deployments use Ethereum Sepolia, chain ID 11155111. For the seeded real local chain (31337), use `npm run local:dev`; see the local demo walkthrough below.
 
 ```sh
 npm run typecheck
@@ -65,3 +65,7 @@ The UI reads at most 100 artworks, exhibitions, submissions and recent listings 
 Royalties apply inside these settlement contracts; ERC-2981 does not enforce royalties on outside marketplaces. Physical custody, delivery, legal execution, holding periods, right of first refusal, museums and conservation remain future work. An exhibition statement does not prove possession.
 
 See [requirements](requirements.md), [acceptance](docs/acceptance.md), and [architecture](docs/lifecycle.md). Transaction tests use an isolated EVM; real Sepolia receipts still require participant signatures.
+
+## Seeded local ENSv2 demo
+
+Run the real artist → gallery → collector flow on chain 31337 with `eonmun.eth` and `atelier.eth`. See [local demo setup and walkthrough](docs/local-demo.md). The primary local app uses the recorded Tailscale URL; public deployments continue to use Sepolia. Both the local-chain forms and the separate mock demo have sample IPFS defaults.

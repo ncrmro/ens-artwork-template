@@ -11,3 +11,5 @@ output/
 out/
 next-env.d.ts
 *.tsbuildinfo
+
+.local/

@@ -138,7 +138,9 @@ const state = (p: Page, a: Address) =>
   p.evaluate(
     (a) =>
       JSON.parse(
-        localStorage.getItem("artwork-platform:v2:" + a.toLowerCase()) || "{}",
+        localStorage.getItem(
+          "artwork-platform:v3:11155111:" + a.toLowerCase() + ":public",
+        ) || "{}",
       ),
     a,
   );
