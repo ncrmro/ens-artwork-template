@@ -16,8 +16,11 @@ contract TestParent {
 /// Test-only parent for independent names held by different actors.
 contract TestLifecycleParent {
     mapping(string=>address) public owners;
+    mapping(uint256=>address) private resourceOwners;
+    function getResource(uint256 id) external pure returns(uint256){return id;}
+    function hasRoles(uint256 id,uint256,address a) external view returns(bool){return resourceOwners[id]==a;}
     mapping(uint256=>address) private children;
-    function setOwner(string calldata label,address owner) external { owners[label]=owner; }
+    function setOwner(string calldata label,address owner) external { owners[label]=owner; resourceOwners[uint256(keccak256(bytes(label)))]=owner; }
     function findOwner(string calldata label) external view returns(address) { return owners[label]; }
     function findExpiry(string calldata) external pure returns(uint64) { return type(uint64).max; }
     function getSubregistry(string calldata label) external view returns(address) { return children[uint256(keccak256(bytes(label)))]; }

@@ -493,3 +493,232 @@ test("mandate revocation, expiry, insufficient scope, parent unlink and ownershi
     write(bob, settlement, "SimpleSettlement", "buy", [2n], parseEther("1")),
   );
 });
+
+test("gallery creates an empty exhibition, artist submits, gallery accepts, collector buys; direct resale pays royalty", async () => {
+  const f = await fixture();
+  const {
+    artist,
+    gallery,
+    bob,
+    carol,
+    read,
+    write,
+    artwork,
+    mandates,
+    settlement,
+    galleryRegistry,
+    token,
+    expiry,
+    grant,
+  } = f;
+  const pub = {
+    label: "tokyo-open",
+    title: "Tokyo Open",
+    manifestURI: ipfs,
+    contenthash: hash,
+    custodyStatement: "Gallery statement",
+  };
+  await assert.rejects(() =>
+    write(artist, galleryRegistry, "GalleryRegistry", "createExhibition", [
+      pub,
+    ]),
+  );
+  await write(gallery, galleryRegistry, "GalleryRegistry", "createExhibition", [
+    pub,
+  ]);
+  const exhibitionId = BigInt(keccak256(stringToHex(pub.label)));
+  const mandateId = await grant();
+  await assert.rejects(() =>
+    write(bob, galleryRegistry, "GalleryRegistry", "submit", [
+      exhibitionId,
+      mandates,
+      mandateId,
+      settlement,
+    ]),
+  );
+  await write(artist, galleryRegistry, "GalleryRegistry", "submit", [
+    exhibitionId,
+    mandates,
+    mandateId,
+    settlement,
+  ]);
+  await assert.rejects(() =>
+    write(artist, galleryRegistry, "GalleryRegistry", "submit", [
+      exhibitionId,
+      mandates,
+      mandateId,
+      settlement,
+    ]),
+  );
+  await assert.rejects(() =>
+    write(gallery, galleryRegistry, "GalleryRegistry", "decide", [1n, true]),
+  );
+  await write(gallery, mandates, "MandateRegistry", "accept", [mandateId]);
+  await assert.rejects(() =>
+    write(bob, galleryRegistry, "GalleryRegistry", "decide", [1n, true]),
+  );
+  await write(gallery, galleryRegistry, "GalleryRegistry", "decide", [
+    1n,
+    true,
+  ]);
+  assert.deepEqual(
+    await read(galleryRegistry, "GalleryRegistry", "acceptedSubmissions", [
+      exhibitionId,
+    ]),
+    [1n],
+  );
+  assert.equal(
+    (await read(artwork, "ArtworkRegistry", "getOwner", [token])).toLowerCase(),
+    artist.account.address.toLowerCase(),
+  );
+  await write(artist, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    settlement,
+    true,
+  ]);
+  await write(gallery, settlement, "SimpleSettlement", "list", [
+    mandateId,
+    parseEther("1"),
+  ]);
+  await write(
+    bob,
+    settlement,
+    "SimpleSettlement",
+    "buy",
+    [1n],
+    parseEther("1"),
+  );
+  const current = await read(artwork, "ArtworkRegistry", "getTokenId", [token]);
+  await assert.rejects(() =>
+    write(artist, settlement, "SimpleSettlement", "listDirect", [
+      current,
+      parseEther("2"),
+      expiry,
+    ]),
+  );
+  await write(bob, settlement, "SimpleSettlement", "listDirect", [
+    current,
+    parseEther("2"),
+    expiry,
+  ]);
+  await assert.rejects(() =>
+    write(
+      bob,
+      settlement,
+      "SimpleSettlement",
+      "buyDirect",
+      [1n],
+      parseEther("2"),
+    ),
+  );
+  await assert.rejects(() =>
+    write(
+      carol,
+      settlement,
+      "SimpleSettlement",
+      "buyDirect",
+      [1n],
+      parseEther("1"),
+    ),
+  );
+  await assert.rejects(() =>
+    write(
+      carol,
+      settlement,
+      "SimpleSettlement",
+      "buyDirect",
+      [1n],
+      parseEther("2"),
+    ),
+  );
+  await write(bob, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    settlement,
+    true,
+  ]);
+  await write(
+    carol,
+    settlement,
+    "SimpleSettlement",
+    "buyDirect",
+    [1n],
+    parseEther("2"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "proceeds", [
+      artist.account.address,
+    ]),
+    parseEther("1"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "proceeds", [
+      bob.account.address,
+    ]),
+    parseEther("1.9"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "proceeds", [
+      gallery.account.address,
+    ]),
+    parseEther(".1"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "directActive", [1n]),
+    false,
+  );
+  assert.equal(
+    (await read(artwork, "ArtworkRegistry", "genesis", [token])).title,
+    "Blue Mountain",
+  );
+});
+
+test("direct primary sale, cancellation and stale direct listing cannot transfer a former owner token", async () => {
+  const { artist, bob, read, write, artwork, settlement, token, expiry } =
+    await fixture();
+  await write(artist, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    settlement,
+    true,
+  ]);
+  await write(artist, settlement, "SimpleSettlement", "listDirect", [
+    token,
+    parseEther("1"),
+    expiry,
+  ]);
+  await write(artist, settlement, "SimpleSettlement", "cancelDirect", [1n]);
+  await assert.rejects(() =>
+    write(
+      bob,
+      settlement,
+      "SimpleSettlement",
+      "buyDirect",
+      [1n],
+      parseEther("1"),
+    ),
+  );
+  await write(artist, settlement, "SimpleSettlement", "listDirect", [
+    token,
+    parseEther("1"),
+    expiry,
+  ]);
+  await write(artist, settlement, "SimpleSettlement", "listDirect", [
+    token,
+    parseEther("2"),
+    expiry,
+  ]);
+  await write(
+    bob,
+    settlement,
+    "SimpleSettlement",
+    "buyDirect",
+    [2n],
+    parseEther("1"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "proceeds", [
+      artist.account.address,
+    ]),
+    parseEther("1"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "directActive", [3n]),
+    false,
+  );
+});

@@ -1,28 +1,32 @@
 # Acceptance record — 2026-09-25
 
-The primary checkout is /home/ncrmro/repos/ncrmro/ens-artwork-template on main. No worktrees are used.
+## Runtime
 
-## Application
+The application is Next.js 16.3.6 App Router, with static page exports served by the Cloudflare Worker. Vite has been removed. `/artist/`, `/gallery/`, `/artwork/`, `/exhibition/` and `/demo/*` are distinct pages.
 
-- Shared artist/gallery platform: https://eonmun-beta.ncrmro.workers.dev/#setup
-- Independent gallery interface: https://eonmun-gallery-demo.ncrmro.workers.dev
-- Local: http://ncrmro-workstation.mercury:4325, service eonmun-beta-local.service.
-- Both local and deployed interfaces use Ethereum Sepolia, chain ID 11155111.
-- Guided wallet setup deploys participant and artwork/exhibition registries, attaches their subdomains, and links the registered parent ENS name. Artists additionally deploy mandates and settlement. Confirmed deployments are saved for resumption and export.
-- Artists submit artwork with scoped gallery mandates; galleries accept, publish attributed exhibitions and list. Collectors purchase; proceeds are withdrawn by recipients.
+- Shared platform: https://eonmun-beta.ncrmro.workers.dev
+- Second gallery instance: https://eonmun-gallery-demo.ncrmro.workers.dev/gallery/
+- Local: http://ncrmro-workstation.mercury:4325
+- Primary checkout: /home/ncrmro/repos/ncrmro/ens-artwork-template, main, no worktrees.
+
+Live pages use Ethereum Sepolia (11155111). Demo pages use isolated sessionStorage and never load wallet/chain code. The local service is eonmun-beta-local.service, transient until reboot.
 
 ## Verification
 
-Solidity compilation, TypeScript, five contract scenarios and browser smoke checks cover the lifecycle. The wallet integration uses three independent wallets and two browser origins on an isolated EVM. It tests a rejected deployment followed by reload/resume without redeploying the confirmed namespace, both guided setup flows, issuance, artist submission, gallery acceptance, exhibition publication, listing, purchase, shared ownership readback and commission withdrawal. Contract tests additionally exercise authorization, revoked/expired/stale mandates, immutable genesis and resale arithmetic.
+- Next.js production export and TypeScript pass; all application routes are generated.
+- Seven contract scenarios pass, including gallery-first exhibition creation, owner submissions, acceptance authorization, duplicate rejection, gallery sale, direct primary sale and resale, exact commission/royalty credits, direct cancellation and stale listing rejection.
+- Wallet browser integration uses independent artist, gallery and collector wallets and two origins on an isolated EVM. It verifies ENS choice and disabled unauthorized names, silent wallet restoration after reload, rejected deployment and resume without duplicate namespace deployment, both registry setups, artwork creation, exhibition creation, artist submission, gallery acceptance/listing, exhibition purchase, direct purchase and commission withdrawal.
+- Demo browser verification creates artwork and an exhibition, submits/accepts work, buys from the exhibition and directly, and verifies persistence after reload. It checks the neutral landing page, absence of the old deployment panel, desktop/mobile layouts, and no browser exceptions.
+- Live ENS discovery returned eonmun.eth and ncrmro.eth for the previously registered example wallet. Discovery candidates are verified onchain for current subregistry permission; no name is preselected.
 
-These are simulated transaction tests, not live Sepolia receipts. Public sites start with labeled previews until participants deploy and share their real contracts. EON MUN is the example artist; eonmun.eth was registered on ENS v2 Sepolia. Parent ownership is checked live before setup.
+## Public-chain acceptance still required
 
-## Remaining acceptance
+Tests that sign transactions use an isolated EVM, not live Sepolia. Participants must confirm deployment, issuance, submission, acceptance, listing and purchase transactions in their own funded Sepolia wallets before claiming a complete public-chain demonstration. No private signing keys are collected or held by this application.
 
-Participants must sign real Sepolia deployment, issuance, submission, acceptance, exhibition and settlement transactions using funded wallets. No signing keys are held by the application or this development session. Pin actual artwork and manifest files to IPFS before publishing. Capture public-chain receipts before claiming a completed public-chain demo.
+The new GalleryRegistry and SimpleSettlement add methods absent from older deployed versions. Those contracts are immutable; incompatible old instances are not silently upgraded. Compatible participant namespaces can be reused without changing their parent pointer.
 
-The MVP loads at most 100 records per collection and displays one artist collection at a time. Exhibition records reference one artwork; multi-artist exhibition curation and a global submissions inbox remain future work. Physical custody, delivery and legal enforcement are not verified by these records. The Tailscale HTTP origin may restrict wallet injection; the deployed app uses HTTPS. The local user service is transient and must be started again after reboot.
+The UI reads at most 100 records per selected registry/recent listing set. IPFS pinning, name renewal and physical delivery remain participant responsibilities. The Tailscale HTTP origin can restrict wallet injection in some browsers; public instances use HTTPS. Legal execution, independently verified custody and universal royalty enforcement remain future work.
 
-## Deployed release evidence
+## Cloudflare release
 
-Cloudflare deployment versions: artist/shared platform `95d9157e-4346-42c0-9229-b67569e171bd`; gallery interface `abc9d003-b2e3-4dea-8ef6-9ce3597e04b1`. Both use the same built interface (`index-CYeF527p.js`) and Sepolia configuration. Live desktop/mobile checks verify preview labeling, wallet-missing handling, all views and Sepolia block readback.
+Next.js build ID: `1bmBoP5tQ7EPH-gXsV6XW`. Shared platform version: `0026ffd1-9329-42fd-b453-9131eb7dcce7`. Gallery instance version: `fb5bc4ed-c547-446d-96a7-e0f5fb3385ab`. The deployed name-discovery endpoint returned both names for the example wallet. Production browser checks exercise the same demo creation/submission/acceptance/purchase story and responsive pages as local verification.

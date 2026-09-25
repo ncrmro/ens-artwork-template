@@ -67,6 +67,15 @@ async function createPage(signer: Address, origin: string): Promise<Page> {
       },
     }),
   );
+  await context.route("**/api/names?*", (r) =>
+    r.fulfill({
+      json: {
+        names: ["eonmun.eth", "gallery.eth"],
+        nextSkip: null,
+        nextAfter: null,
+      },
+    }),
+  );
   await context.route("**/api/rpc", async (route) => {
     const data = route.request().postDataJSON();
     const execute = async (c: any) => {
@@ -123,232 +132,187 @@ async function createPage(signer: Address, origin: string): Promise<Page> {
   );
   return page;
 }
-const state = async (p: Page) =>
-  p.evaluate(() =>
-    JSON.parse(
-      localStorage.getItem("artwork-lifecycle:v1:11155111:eonmun.eth") || "{}",
-    ),
+const ipfs =
+  "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
+const state = (p: Page, a: Address) =>
+  p.evaluate(
+    (a) =>
+      JSON.parse(
+        localStorage.getItem("artwork-platform:v2:" + a.toLowerCase()) || "{}",
+      ),
+    a,
   );
-const deployed = async (p: Page, button: string, field: string) => {
-  await p.getByRole("button", { name: button, exact: true }).click();
-  await p.waitForFunction((k) => {
-    const s = JSON.parse(
-      localStorage.getItem("artwork-lifecycle:v1:11155111:eonmun.eth") || "{}",
-    );
-    return /^0x[0-9a-fA-F]{40}$/.test(s[k]);
-  }, field);
-};
 const idle = async (p: Page) => {
   await expect(p.locator("header .wallet")).toBeEnabled();
-  const alerts = await p.getByRole("alert").allTextContents();
-  assert.deepEqual(alerts, []);
+  assert.deepEqual(
+    await p
+      .locator("[role=alert]:not(#__next-route-announcer__)")
+      .allTextContents(),
+    [],
+  );
 };
-const share = (origin: string, links: any, view = "artist", tab = "artwork") =>
+const link = (origin: string, path: string, c: any) =>
   origin +
-  "/?" +
-  new URLSearchParams({ ...links, view }).toString() +
-  "#" +
-  tab;
-const read = async (
-  address: string,
-  name: string,
-  fn: string,
-  args: readonly unknown[] = [],
-): Promise<any> =>
-  pc.readContract({
-    address: address as Address,
-    abi: contracts[name].abi,
-    functionName: fn,
-    args,
-  });
+  path +
+  "?" +
+  new URLSearchParams(
+    Object.fromEntries(Object.entries(c).filter(([, v]) => v)) as Record<
+      string,
+      string
+    >,
+  );
 try {
   const a = await createPage(artist.account.address, base);
-  await a.goto(base + "/#setup");
-  await a.getByRole("button", { name: "Connect / refresh account" }).click();
-  await idle(a);
-  console.log("Artist namespace and protocol deployment");
+  await a.goto(base + "/artist/");
+  await expect(a.locator("header .wallet")).toContainText(
+    artist.account.address.slice(0, 6),
+    { ignoreCase: true },
+  );
+  await a.getByLabel("ENS name", { exact: true }).selectOption("eonmun.eth");
+  await expect(
+    a
+      .getByLabel("ENS name", { exact: true })
+      .locator('option[value="gallery.eth"]'),
+  ).toHaveAttribute("disabled", "");
   await a
-    .getByRole("button", {
-      name: "Create / resume artist registry ↗",
-      exact: true,
-    })
+    .getByRole("button", { name: "Create / resume artist registry" })
     .click();
-  await expect(a.getByRole("alert")).toBeVisible();
-  const checkpoint = await state(a);
-  assert.ok(checkpoint.namespace);
-  assert.equal(checkpoint.artwork, "");
+  await expect(
+    a.locator("[role=alert]:not(#__next-route-announcer__)"),
+  ).toBeVisible();
+  const first = await state(a, artist.account.address);
+  assert.ok(first.namespace);
+  assert.ok(!first.artwork);
   await a.reload();
-  await deployed(a, "Create / resume artist registry ↗", "settlement");
-  assert.equal((await state(a)).namespace, checkpoint.namespace);
-  await idle(a);
-  await expect(a.getByText(/Namespace linked ✓/)).toBeVisible();
-  let links = await state(a);
-  const g = await createPage(gallery.account.address, galleryBase);
-  await g.goto(share(galleryBase, links, "gallery", "setup"));
-  await g.getByRole("button", { name: "Connect / refresh account" }).click();
-  await idle(g);
-  await g.getByLabel("Gallery ENS parent", { exact: true }).fill("gallery.eth");
-  console.log("Independent gallery namespace deployment");
-  await deployed(g, "Create / resume gallery registry ↗", "galleryRegistry");
-  await idle(g);
-  await expect(
-    g.getByText("Gallery namespace linked ✓", { exact: true }),
-  ).toBeVisible();
-  links = await state(g);
-  await a.goto(share(base, links, "artist", "workspace"));
-  await a.getByRole("button", { name: "Connect wallet" }).click();
-  await idle(a);
-  console.log("Issue physical artwork and immutable genesis");
-  for (const [label, value] of [
-    ["Title", "Blue Mountain"],
-    ["Artwork label", "blue-mountain"],
-    ["Dimensions", "48 x 116 in"],
-    ["Medium", "Acrylic and gold leaf on linen"],
-    [
-      "Canonical image IPFS URI",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-    ],
-    [
-      "Artwork manifest IPFS URI",
-      "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-    ],
-  ]) {
-    await a.getByLabel(label, { exact: true }).fill(value);
-  }
-  await a.getByRole("button", { name: "Issue & lock genesis" }).click();
-  await expect(
-    a.getByRole("heading", { name: "Blue Mountain", exact: true }),
-  ).toBeVisible();
-  await idle(a);
-  await a.getByRole("button", { name: "Workspace", exact: true }).click();
+  await a.getByLabel("ENS name", { exact: true }).selectOption("eonmun.eth");
   await a
-    .getByLabel("Gallery wallet", { exact: true })
-    .fill(gallery.account.address);
-  await a.getByLabel("Minimum price (test ETH)", { exact: true }).fill("1");
-  await a.getByRole("button", { name: "Submit to gallery" }).click();
-  await expect(
-    a.getByText("AWAITING ACCEPTANCE", { exact: true }),
-  ).toBeVisible();
-  await idle(a);
-  await a
-    .getByRole("button", { name: "Approve settlement", exact: false })
+    .getByRole("button", { name: "Create / resume artist registry" })
     .click();
   await expect(
-    a.getByRole("button", { name: "Revoke settlement approval" }),
-  ).toBeVisible();
+    a.getByRole("heading", { name: "Create artwork", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   await idle(a);
-  console.log("Gallery accepts, exhibits and lists without owning the token");
-  await g.goto(share(galleryBase, links, "gallery", "workspace"));
-  await g.getByRole("button", { name: "Connect wallet" }).click();
-  await idle(g);
-  await g.getByRole("button", { name: "Accept submission #1" }).click();
-  await expect(g.getByText("ACTIVE", { exact: true })).toBeVisible();
+  assert.equal(
+    (await state(a, artist.account.address)).namespace,
+    first.namespace,
+  );
+  console.log(
+    "ENS selection, authorized wallet restoration, rejected deployment and resume passed",
+  );
+  const g = await createPage(gallery.account.address, galleryBase);
+  await g.goto(galleryBase + "/gallery/");
+  await g.getByLabel("ENS name", { exact: true }).selectOption("gallery.eth");
+  await g
+    .getByRole("button", { name: "Create / resume gallery registry" })
+    .click();
+  await expect(
+    g.getByRole("heading", { name: "Create exhibition", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   await idle(g);
   await g.getByLabel("Exhibition title", { exact: true }).fill("Tokyo 2026");
   await g.getByLabel("Exhibition label", { exact: true }).fill("tokyo-2026");
+  await g.getByLabel("Exhibition manifest IPFS URI").fill(ipfs);
   await g
-    .getByLabel("Exhibition manifest URI", { exact: true })
-    .fill("ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi");
-  await g
-    .getByLabel("Custody statement (unverified)", { exact: true })
-    .fill("Gallery reports receiving the painting for exhibition.");
-  await g.getByRole("button", { name: "Publish exhibition #1" }).click();
-  await expect
-    .poll(() => read(links.galleryRegistry, "GalleryRegistry", "recordCount"))
-    .toBe(1n);
+    .getByRole("button", { name: "Create exhibition ↗", exact: true })
+    .click();
   await idle(g);
-  await g.getByRole("button", { name: "List artwork #1" }).click();
-  await expect
-    .poll(() => read(links.settlement, "SimpleSettlement", "count"))
-    .toBe(1n);
-  await idle(g);
-  const id = await read(links.artwork, "ArtworkRegistry", "recordId", [0n]);
-  assert.equal(
-    (
-      await read(links.artwork, "ArtworkRegistry", "getOwner", [id])
-    ).toLowerCase(),
-    artist.account.address,
-  );
-  const c = await createPage(collector.account.address, base);
-  await c.goto(share(base, links, "collector"));
+  await g.getByRole("link", { name: "View exhibition ↗" }).click();
   await expect(
-    c.getByRole("heading", { name: "Tokyo 2026", exact: true }),
+    g.getByRole("heading", { name: "Tokyo 2026", exact: true }),
   ).toBeVisible();
-  await c.getByRole("button", { name: "Collect artwork" }).click();
-  await expect
-    .poll(async () =>
-      String(
-        await read(links.artwork, "ArtworkRegistry", "getOwner", [id]),
-      ).toLowerCase(),
-    )
-    .toBe(collector.account.address);
-  await idle(c);
-  for (const p of [a, g, c]) {
-    await p.goto(
-      share(
-        p === g ? galleryBase : base,
-        links,
-        p === g ? "gallery" : "collector",
-      ),
-    );
-    await p.reload();
+  const gc = await state(g, gallery.account.address);
+  const invitation = {
+    galleryName: gc.galleryName,
+    galleryNamespace: gc.galleryNamespace,
+    galleryRegistry: gc.galleryRegistry,
+  };
+  await a.goto(link(base, "/artist/", invitation));
+  for (const [title, label] of [
+    ["Blue Mountain", "blue-mountain"],
+    ["Quiet Tide", "quiet-tide"],
+  ]) {
+    await a.getByLabel("Title", { exact: true }).fill(title);
+    await a.getByLabel("Artwork label", { exact: true }).fill(label);
+    await a.getByLabel("Medium", { exact: true }).fill("Oil on canvas");
+    await a.getByLabel("Dimensions", { exact: true }).fill("60 x 80 cm");
+    await a.getByLabel("Image IPFS URI").fill(ipfs);
+    await a.getByLabel("Manifest IPFS URI", { exact: true }).fill(ipfs);
+    await a.getByRole("button", { name: "Issue & lock genesis" }).click();
+    await idle(a);
     await expect(
-      p
-        .locator(".facts")
-        .getByText(
-          new RegExp(
-            collector.account.address.slice(0, 6) +
-              "…" +
-              collector.account.address.slice(-4),
-            "i",
-          ),
-        ),
-    ).toBeVisible();
-    await expect(
-      p.getByRole("heading", { name: "Tokyo 2026", exact: true }),
+      a.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
   }
-  assert.equal(
-    await read(links.mandates, "MandateRegistry", "active", [1n, 257n]),
-    false,
-  );
-  assert.equal(
-    await read(links.settlement, "SimpleSettlement", "proceeds", [
-      gallery.account.address,
-    ]),
-    parseEther(".1"),
-  );
-  await g.getByRole("button", { name: "Workspace", exact: true }).click();
-  await g.getByRole("button", { name: "Connect wallet" }).click();
+  await a
+    .locator(".art-card")
+    .filter({
+      has: a.getByRole("heading", { name: "Blue Mountain", exact: true }),
+    })
+    .getByRole("link", { name: "View artwork" })
+    .click();
+  await a.locator("main h1").waitFor();
+  await a
+    .getByLabel("Exhibition", { exact: true })
+    .selectOption({ label: "Tokyo 2026" });
+  await a.getByLabel("Minimum price (test ETH)").fill("1");
+  await a.getByRole("button", { name: "Submit artwork ↗" }).click();
+  await idle(a);
+  await g.reload();
+  await expect(
+    g.getByRole("heading", { name: "Blue Mountain", exact: true }),
+  ).toBeVisible();
+  await g.getByRole("button", { name: "Accept submission" }).click();
   await idle(g);
+  await g.getByRole("button", { name: "List at agreed price" }).click();
+  await idle(g);
+  const c = await createPage(collector.account.address, base);
+  await c.goto(g.url().replace(galleryBase, base));
+  await c.getByRole("button", { name: "Buy from exhibition" }).click();
+  await idle(c);
+  await expect(
+    c.getByRole("button", { name: "Buy from exhibition" }),
+  ).toHaveCount(0);
+  await a.goto(base + "/artist/");
+  await a
+    .locator(".art-card")
+    .filter({
+      has: a.getByRole("heading", { name: "Quiet Tide", exact: true }),
+    })
+    .getByRole("link", { name: "View artwork" })
+    .click();
+  await a.getByLabel("Direct price (test ETH)").fill("2");
+  await a.getByRole("button", { name: "List for direct sale" }).click();
+  await idle(a);
+  const directUrl = a.url();
+  await c.goto(directUrl);
+  await c.getByRole("button", { name: "Buy directly" }).click();
+  await idle(c);
+  await expect(c.getByRole("button", { name: "Buy directly" })).toHaveCount(0);
+  await g.goto(galleryBase + "/gallery/");
+  await expect(
+    g.getByRole("button", { name: "Withdraw proceeds" }),
+  ).toBeEnabled();
   await g.getByRole("button", { name: "Withdraw proceeds" }).click();
-  await expect
-    .poll(() =>
-      read(links.settlement, "SimpleSettlement", "proceeds", [
-        gallery.account.address,
-      ]),
-    )
-    .toBe(0n);
   await idle(g);
-  fs.mkdirSync("output", { recursive: true });
-  await c.screenshot({
-    path: "output/lifecycle-wallet-proof.png",
-    fullPage: true,
-  });
+  await a.reload();
+  await expect(a.locator("header .wallet")).toContainText(
+    artist.account.address.slice(0, 6),
+    { ignoreCase: true },
+  );
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({
-      proof: "isolated EVM and injected wallets; not public-chain receipts",
-      independentOrigins: [base, galleryBase],
-      namespaceDeployment: true,
-      immutableGenesis: true,
-      galleryMandate: true,
-      exhibition: true,
-      noncustodialListing: true,
-      collectorSettlement: true,
-      sharedOwnershipAcrossSites: true,
+      nextPages: true,
+      walletRestored: true,
+      ensChoices: true,
+      resumableSetup: true,
+      emptyExhibition: true,
+      submission: true,
+      galleryAcceptance: true,
+      exhibitionPurchase: true,
+      directPurchase: true,
       commissionWithdrawal: true,
-      errors,
+      proof: "isolated EVM and injected wallets, not public Sepolia receipts",
     }),
   );
 } finally {

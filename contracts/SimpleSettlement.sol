@@ -54,6 +54,32 @@ contract SimpleSettlement is ReentrancyGuard {
         artwork.safeTransferFrom(m.owner,msg.sender,m.tokenId,1,"");
         emit Settled(id,m.tokenId,msg.sender,m.owner,msg.value,commission,royalty);
     }
+    struct DirectListing { uint256 tokenId; address seller; uint256 epoch; uint256 price; uint64 expires; bool sold; }
+    mapping(uint256=>DirectListing) public directListings;
+    uint256 public directCount;
+    event DirectListed(uint256 indexed id,uint256 indexed tokenId,address indexed seller,uint256 price);
+    event DirectPurchased(uint256 indexed id,uint256 indexed tokenId,address indexed buyer,uint256 royalty);
+    function listDirect(uint256 tokenId,uint256 price,uint64 expires) external returns(uint256 id) {
+        _linked(); require(artwork.ownerOf(tokenId)==msg.sender,"Only current owner");
+        require(price>0 && expires>block.timestamp,"Invalid price or expiry");
+        id=++directCount; directListings[id]=DirectListing(tokenId,msg.sender,artwork.ownershipEpoch(tokenId),price,expires,false);
+        emit DirectListed(id,tokenId,msg.sender,price);
+    }
+    function cancelDirect(uint256 id) external { require(directListings[id].seller==msg.sender,"Only seller"); directListings[id].sold=true; }
+    function directActive(uint256 id) public view returns(bool) {
+        DirectListing memory d=directListings[id];
+        return d.price>0 && !d.sold && d.expires>block.timestamp && artwork.ownerOf(d.tokenId)==d.seller && artwork.ownershipEpoch(d.tokenId)==d.epoch;
+    }
+    function buyDirect(uint256 id) external payable nonReentrant {
+        _linked(); require(directActive(id),"Direct listing inactive");
+        DirectListing storage d=directListings[id]; require(msg.value==d.price && msg.sender!=d.seller,"Invalid buyer or payment");
+        d.sold=true; (address recipient,uint256 royalty)=artwork.royaltyInfo(d.tokenId,msg.value);
+        uint256 k=artwork.key(d.tokenId);
+        if(!previouslySold[k] && d.seller==artwork.artist()) royalty=0;
+        previouslySold[k]=true; proceeds[recipient]+=royalty; proceeds[d.seller]+=msg.value-royalty;
+        artwork.safeTransferFrom(d.seller,msg.sender,d.tokenId,1,"");
+        emit DirectPurchased(id,d.tokenId,msg.sender,royalty);
+    }
     function withdraw() external nonReentrant {
         uint256 amount=proceeds[msg.sender]; require(amount>0,"No proceeds"); proceeds[msg.sender]=0;
         (bool ok,)=payable(msg.sender).call{value:amount}(""); require(ok,"Withdrawal failed"); emit Withdrawn(msg.sender,amount);

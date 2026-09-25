@@ -12,3 +12,8 @@ The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119
 8. Independent artist, gallery and collector interfaces MUST resolve the same contracts and records without a central application database. The interface MUST distinguish attributable claims from independently verified physical custody.
 9. The UI MUST label previews and unconfigured deployments, use ordinary wallets with Burner optional, and MUST NOT collect wallet keys.
 10. The UI MUST mark universal royalty enforcement, holding periods, right of first refusal, verified custody/logistics, legal execution, museum and conservator workflows as future work. It MUST distinguish simulated test evidence from live Sepolia acceptance.
+11. The platform MUST use Next.js with distinct artist, gallery, artwork and exhibition pages. Visitors MUST choose an artist or gallery flow before setup forms; live pages MUST NOT preselect an example ENS name.
+12. Setup MUST list wallet-owned or delegated ENS v2 names, verify current subregistry permission before deployment, and restore previously authorized wallet accounts without prompting on refresh.
+13. Galleries MUST be able to create exhibitions before submissions. Current artwork owners MUST be able to submit to a named exhibition, and only the gallery MUST be able to accept or decline submissions.
+14. Collectors MUST be able to buy through an exhibition or an owner's direct listing. Direct listings MUST NOT charge a gallery commission, and stale, cancelled or expired listings MUST NOT settle.
+15. Demo mode MUST label mocked records and purchases, MUST persist local edits across page navigation and refresh, and MUST NOT request wallet signatures or send blockchain transactions.

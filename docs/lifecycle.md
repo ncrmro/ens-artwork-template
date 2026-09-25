@@ -43,3 +43,11 @@ Physical handoff, verified custody, legal execution, ROFR, holding periods, cros
 - https://docs.ens.domains/ensv2/enhanced-access-control/
 - https://docs.ens.domains/ensv2/erc1155-singleton/
 - https://eips.ethereum.org/EIPS/eip-2981
+
+## Next.js platform and exhibition-first flow
+
+The platform now uses Next.js App Router static exports on the existing Worker. Artist and gallery setup are distinct pages; artwork and exhibition links carry public references. The ENS beta indexer at https://staging-graphql.ens.dev/ supplies owned and role-associated candidate names (the same endpoint used by https://app.ens.dev/). Candidate access is checked using the configured ETHRegistry's current resource, ROLE_SET_SUBREGISTRY and expiry before setup. See [ENS enumeration guidance](https://docs.ens.domains/ensv2/tutorial-app-developers/) and [indexing events](https://docs.ens.domains/ensv2/indexing/).
+
+GalleryRegistry.createExhibition creates the immutable exhibition identity before submissions. submit binds an exhibition to a current-owner mandate and its matching settlement. The gallery separately accepts the mandate then decides the submission. acceptedSubmissions provides the accepted set without a centralized application database. Multiple artists can submit through their own mandate and settlement contracts.
+
+SimpleSettlement adds direct owner listings with expiry, cancellation, current token/version and ownership epoch validation. Direct and gallery settlements share royalty accounting. The website remains a reference interface, while contracts are the live system of record. Demo pages import a separate local component with sessionStorage and no wallet or chain access.

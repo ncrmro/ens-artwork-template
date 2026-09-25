@@ -6,3 +6,8 @@ dist/
 artifacts/
 cache/
 output/
+
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo

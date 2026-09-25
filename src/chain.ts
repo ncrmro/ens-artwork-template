@@ -29,6 +29,8 @@ export const contracts = artifacts as Record<
   { abi: Abi; bytecode: Hex }
 >;
 export const parentAbi = parseAbi([
+  "function getResource(uint256 anyId) view returns(uint256)",
+  "function hasRoles(uint256 resource,uint256 roleBitmap,address account) view returns(bool)",
   "function findOwner(string label) view returns(address)",
   "function findExpiry(string label) view returns(uint64)",
   "function getSubregistry(string label) view returns(address)",
