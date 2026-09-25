@@ -1,9 +1,9 @@
-# Requirements — Eon Moon ENS v2
+# Requirements — Eonmun ENS v2
 
 The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119. These requirements describe the initial Sepolia release.
 
 1. The template MUST let each artist use their own ENS parent name, contracts, payout wallet, and Cloudflare Worker through configuration without source-code edits.
-2. The initial instance MUST target Ethereum Sepolia, use `eonmoon.eth`, and run on a separate Worker named `eonmoon-beta`.
+2. The initial instance MUST target Ethereum Sepolia, use `eonmun.eth`, and run on a separate Worker named `eonmun-beta`.
 3. Each artwork MUST have a unique ENS v2 subname whose custom resolver returns its IPFS contenthash through the Universal Resolver.
 4. Collectors MUST be able to purchase and resell the artwork's ENS subname token using ordinary wallets. Publication, purchase, and resale MUST work with Burner disabled; Burner integration MAY be added separately.
 5. The artist MUST set a royalty recipient and percentage before listing. Artwork content and royalty terms MUST remain unchanged after listing and across ownership transfers.

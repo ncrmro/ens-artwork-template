@@ -1,7 +1,7 @@
 {
-  "name": "Eon Moon",
-  "parentName": "eonmoon.eth",
-  "workerName": "eonmoon-beta",
+  "name": "Eonmun",
+  "parentName": "eonmun.eth",
+  "workerName": "eonmun-beta",
   "chainId": 11155111,
   "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
   "ipfsGateway": "https://ipfs.io/ipfs/",

@@ -26,7 +26,7 @@ export default {
     if (url.pathname === "/api/health")
       return Response.json(
         {
-          app: "eonmoon-beta",
+          app: "eonmun-beta",
           chainId: 11155111,
           network: "Ethereum Sepolia",
           burnerRequired: false,

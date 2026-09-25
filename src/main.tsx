@@ -65,7 +65,7 @@ function App() {
   const [registry, setRegistry] = useState("");
   const [sale, setSale] = useState("");
   const [example, setExample] = useState("");
-  const [parent, setParent] = useState("eonmoon.eth");
+  const [parent, setParent] = useState("eonmun.eth");
   const [block, setBlock] = useState("");
   const [parentOwner, setParentOwner] = useState("");
   const [linked, setLinked] = useState(false);
@@ -95,7 +95,7 @@ function App() {
         let saved: Record<string, string> = {};
         try {
           saved = JSON.parse(
-            localStorage.getItem("eonmoon:" + c.parentName) || "{}",
+            localStorage.getItem("eonmun:" + c.parentName) || "{}",
           );
         } catch {}
         setRegistry(q.get("registry") || c.registry || saved.registry || "");
@@ -243,7 +243,7 @@ function App() {
       sale: next.sale ?? sale,
       example: next.example ?? example,
     };
-    localStorage.setItem("eonmoon:" + config.parentName, JSON.stringify(s));
+    localStorage.setItem("eonmun:" + config.parentName, JSON.stringify(s));
     setRegistry(s.registry);
     setSale(s.sale);
     setExample(s.example);
@@ -370,7 +370,7 @@ function App() {
       <header>
         <a className="brand" href="#gallery" onClick={() => go("gallery")}>
           <span className="brand-mark">◒</span>{" "}
-          {(config?.name || "Eon Moon").toUpperCase()}{" "}
+          {(config?.name || "Eonmun").toUpperCase()}{" "}
           <small>ARTIST EDITION / 001</small>
         </a>
         <nav aria-label="Main navigation">
@@ -432,7 +432,7 @@ function App() {
                 </h1>
                 <p className="intro">
                   A collection with a home of its own. Discover artwork under{" "}
-                  <strong>{config?.parentName || "eonmoon.eth"}</strong>,
+                  <strong>{config?.parentName || "eonmun.eth"}</strong>,
                   collect with your wallet, and let every storefront resale give
                   back to the artist.
                 </p>
@@ -471,7 +471,7 @@ function App() {
                   <span>01 / 02</span>
                 </figcaption>
                 <div className="art-stamp">
-                  {(config?.name || "Eon Moon").toUpperCase()}
+                  {(config?.name || "Eonmun").toUpperCase()}
                   <br />
                   <span>SEPOLIA EDITION</span>
                 </div>
@@ -538,7 +538,7 @@ function App() {
                           <span>UNPUBLISHED</span>
                         </div>
                         <p>
-                          {label}.{config?.parentName || "eonmoon.eth"}
+                          {label}.{config?.parentName || "eonmun.eth"}
                         </p>
                         <div className="card-bottom">
                           <span>ILLUSTRATIVE EXAMPLE</span>
@@ -1020,7 +1020,7 @@ function App() {
       </main>
       <footer>
         <div className="brand">
-          ◒ {(config?.name || "Eon Moon").toUpperCase()}
+          ◒ {(config?.name || "Eonmun").toUpperCase()}
         </div>
         <p>
           An independent artist storefront.

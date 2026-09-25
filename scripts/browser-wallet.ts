@@ -131,7 +131,7 @@ try {
   await page.getByRole("button", { name: "Publish on Sepolia" }).click();
   await page.locator(".work-row").filter({ hasText: "Test Lunar" }).waitFor();
   const addresses = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("eonmoon:eonmoon.eth")!),
+    JSON.parse(localStorage.getItem("eonmun:eonmun.eth")!),
   );
   async function openArt() {
     await page.getByRole("button", { name: "studio", exact: true }).click();

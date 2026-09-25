@@ -8,4 +8,4 @@ Node 24 / npm is the declared environment. No global installation. Build contrac
 
 App and Worker always target Ethereum Sepolia, chain 11155111. Unit tests use an isolated in-process EVM; there is no local-chain application mode. The artist deploys through their wallet; no private keys or Burner PINs enter the app. Register/link the parent before claiming ENS resolution is live.
 
-Use `npm run dev` for port allocation and Tailscale binding. The running session uses user service `eonmoon-beta-local`; inspect it before starting another instance. Stop with `systemctl --user stop eonmoon-beta-local` when requested.
+Use `npm run dev` for port allocation and Tailscale binding. The running session uses user service `eonmun-beta-local`; inspect it before starting another instance. Stop with `systemctl --user stop eonmun-beta-local` when requested.

@@ -1,0 +1,6 @@
+{
+  "name": "eonmoon-beta",
+  "main": "worker/legacy-redirect.ts",
+  "compatibility_date": "2026-09-25",
+  "workers_dev": true
+}

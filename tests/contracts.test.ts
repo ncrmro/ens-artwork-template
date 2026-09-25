@@ -36,7 +36,7 @@ async function fixture() {
   const registry = await deploy("ArtRegistry", [
     store,
     parent,
-    "eonmoon",
+    "eonmun",
     artist.account.address,
   ]);
   const sale = await deploy("ArtSale", [registry]);
@@ -158,7 +158,7 @@ test("primary purchase, resale, exact royalty withdrawal, IPFS record and metada
     )) as Address;
     assert.equal(
       await read(resolver, "ArtResolver", "contenthash", [
-        namehash("artwork1.eonmoon.eth"),
+        namehash("artwork1.eonmun.eth"),
       ]),
       hash,
     );
@@ -167,8 +167,8 @@ test("primary purchase, resale, exact royalty withdrawal, IPFS record and metada
       new Uint8Array([
         8,
         ...Buffer.from("artwork1"),
-        7,
-        ...Buffer.from("eonmoon"),
+        6,
+        ...Buffer.from("eonmun"),
         3,
         ...Buffer.from("eth"),
         0,
@@ -180,7 +180,7 @@ test("primary purchase, resale, exact royalty withdrawal, IPFS record and metada
     const data = encodeFunctionData({
       abi,
       functionName: "contenthash",
-      args: [namehash("artwork1.eonmoon.eth")],
+      args: [namehash("artwork1.eonmun.eth")],
     });
     const resolved = (await read(resolver, "ArtResolver", "resolve", [
       dns,
@@ -235,7 +235,7 @@ test("unauthorized publishing, record edits, resolver replacement, stale listing
     )) as Address;
     await assert.rejects(
       write(artist, resolver, "ArtResolver", "publish", [
-        namehash("artwork1.eonmoon.eth"),
+        namehash("artwork1.eonmun.eth"),
         hash,
         metadata,
       ]),

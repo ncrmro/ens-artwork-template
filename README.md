@@ -1,8 +1,10 @@
-# ENS artwork template — Eon Moon
+# ENS artwork template — Eonmun
 
 **Your art. Your name. Your storefront.**
 
 An independent artist storefront on Ethereum Sepolia. Each artwork is an ENS v2 subname with immutable IPFS content and artist-selected resale royalties. Burner cards are optional and not required by any core flow.
+
+Live app: https://eonmun-beta.ncrmro.workers.dev. The former eonmoon-beta hostname redirects here. Local app: http://ncrmro-workstation.mercury:4325.
 
 ## Run
 
