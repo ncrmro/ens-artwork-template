@@ -1,3 +1,4 @@
+import { walletBatches } from "./wallet-batches.js";
 import { repairEonmunMediaPins } from "./eonmun-import.js";
 import {
   encodeDeployData,
@@ -66,6 +67,7 @@ export async function runAdminSeed({
   save,
   status,
   checkOnly = false,
+  batch = false,
 }) {
   const root = config.ens.ETHRegistry;
   const read = (address, abi, functionName, args = []) =>
@@ -87,6 +89,16 @@ export async function runAdminSeed({
       throw Error("Only the current ncrmro.eth owner can seed.");
   }
   await guard();
+  const batching = walletBatches({
+    w,
+    pc,
+    account,
+    chainId: config.chainId,
+    contracts,
+    guard,
+    status,
+  });
+  if (batch && !checkOnly) await batching.check();
   const fingerprint = keccak256(
     stringToHex(
       JSON.stringify({
@@ -258,6 +270,8 @@ export async function runAdminSeed({
     allowLocal: config.chainId === 31337,
     adapter: {
       pc,
+      sendBatch: batch ? batching.send : undefined,
+      waitBatch: batching.wait,
       authorize: guard,
       validParent: (n) => parentNames.includes(n),
       parentRegistry,

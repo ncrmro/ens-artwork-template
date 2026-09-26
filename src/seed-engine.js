@@ -201,6 +201,56 @@ export async function seedCatalogue({
     persist();
     return r;
   }
+  journal.batches ||= {};
+  async function finishBatch(id) {
+    const entry = journal.batches[id];
+    if (entry.status === "success") return;
+    if (!adapter.waitBatch)
+      throw Error("Resume this wallet batch in the admin website.");
+    const receipt = await adapter.waitBatch(id);
+    for (const key of entry.keys)
+      journal.transactions[key] = {
+        hash: receipt.transactionHash,
+        blockNumber: Number(receipt.blockNumber),
+        status: "success",
+        batchId: id,
+      };
+    entry.status = "success";
+    persist();
+  }
+  for (const id of Object.keys(journal.batches)) await finishBatch(id);
+  const operation = (key, p, address, kind, functionName, args = []) => ({
+    key,
+    p,
+    address,
+    kind,
+    functionName,
+    args,
+  });
+  async function writeMany(operations) {
+    const pending = operations.filter(
+      (o) => !journal.transactions[o.key]?.hash,
+    );
+    if (adapter.sendBatch) {
+      for (let i = 0; i < pending.length; i += 8) {
+        const group = pending.slice(i, i + 8);
+        const id = await adapter.sendBatch(group);
+        journal.batches[id] = {
+          keys: group.map((o) => o.key),
+          status: "pending",
+        };
+        persist();
+        await finishBatch(id);
+      }
+    }
+    const receipts = new Map();
+    for (const o of operations)
+      receipts.set(
+        o.key,
+        await write(o.key, o.p, o.address, o.kind, o.functionName, o.args),
+      );
+    return receipts;
+  }
   async function deploy(p, kind, args) {
     const k = p.id + "." + kind;
     if (!journal.deployments[k]) {
@@ -356,105 +406,165 @@ export async function seedCatalogue({
       );
     }
   }
+  const exhibitions = [];
   for (const s of catalogue.shows) {
     const g = participants.find((p) => p.name === s.gallery);
     const manifest = assets.shows[s.id].manifest;
-    await write(
-      "show." + s.id,
-      g,
-      g.registry,
-      "GalleryRegistry",
-      "createExhibitionDated",
-      [
-        {
-          label: s.id,
-          title: s.title,
-          manifestURI: manifest,
-          contenthash: contenthash(manifest),
-          custodyStatement:
-            s.description +
-            " Testnet example; no verified physical custody. Historical dates are gallery-reported.",
-        },
-        date(s.occurredAt),
-      ],
+    exhibitions.push(
+      operation(
+        "show." + s.id,
+        g,
+        g.registry,
+        "GalleryRegistry",
+        "createExhibitionDated",
+        [
+          {
+            label: s.id,
+            title: s.title,
+            manifestURI: manifest,
+            contenthash: contenthash(manifest),
+            custodyStatement:
+              s.description +
+              " Testnet example; no verified physical custody. Historical dates are gallery-reported.",
+          },
+          date(s.occurredAt),
+        ],
+      ),
     );
+  }
+  await writeMany(exhibitions);
+  const loans = [];
+  for (const s of catalogue.shows) {
+    const g = participants.find((p) => p.name === s.gallery);
     for (const workId of s.works) {
-      const w = catalogue.works.find((w) => w.id === workId);
-      const a = participants.find((p) => p.name === w.artist);
+      const w = catalogue.works.find((w) => w.id === workId),
+        a = participants.find((p) => p.name === w.artist);
       const token = await read(a.registry, "ArtworkRegistry", "getTokenId", [
         hashLabel(workId),
       ]);
-      const k = "loan." + s.id + "." + workId;
-      const expires = (await pc.getBlock()).timestamp + 365n * 86400n;
-      const r = await write(k, a, a.mandates, "MandateRegistry", "create", [
+      loans.push({ s, g, w, a, token, k: "loan." + s.id + "." + workId });
+    }
+  }
+  const expires = (await pc.getBlock()).timestamp + 365n * 86400n;
+  const created = await writeMany(
+    loans.map(({ k, a, g, w, s, token }) =>
+      operation(k, a, a.mandates, "MandateRegistry", "create", [
         token,
         g.wallet,
         parseEther(w.price),
         1000,
         expires,
         s.status === "current" ? 273n : 16n,
-      ]);
-      const { decodeEventLog } = await import("viem");
-      const event = (receipt, eventName, kind) =>
-        receipt.logs
-          .filter((l) =>
-            eq(l.address, kind === "MandateRegistry" ? a.mandates : g.registry),
-          )
-          .map((l) => {
-            try {
-              return decodeEventLog({
-                abi: contracts[kind].abi,
-                data: l.data,
-                topics: l.topics,
-              });
-            } catch {
-              return null;
-            }
-          })
-          .find((x) => x?.eventName === eventName);
-      const mandateId = event(r, "MandateCreated", "MandateRegistry")?.args.id;
-      if (!mandateId) throw Error("Missing mandate event");
-      await write(k + ".accept", g, a.mandates, "MandateRegistry", "accept", [
+      ]),
+    ),
+  );
+  const { decodeEventLog } = await import("viem");
+  function events(receipt, address, kind, name) {
+    return receipt.logs
+      .filter((l) => eq(l.address, address))
+      .flatMap((l) => {
+        try {
+          const e = decodeEventLog({
+            abi: contracts[kind].abi,
+            data: l.data,
+            topics: l.topics,
+          });
+          return e.eventName === name ? [e.args] : [];
+        } catch {
+          return [];
+        }
+      });
+  }
+  const usedMandates = new Set();
+  for (const loan of loans) {
+    loan.mandateId = events(
+      created.get(loan.k),
+      loan.a.mandates,
+      "MandateRegistry",
+      "MandateCreated",
+    ).find(
+      (e) =>
+        e.tokenId === loan.token &&
+        eq(e.gallery, loan.g.wallet) &&
+        !usedMandates.has(loan.a.mandates + ":" + e.id),
+    )?.id;
+    if (!loan.mandateId) throw Error("Missing mandate event for " + loan.k);
+    usedMandates.add(loan.a.mandates + ":" + loan.mandateId);
+  }
+  // These calls only depend on the previous phase; each can be simulated alone.
+  const submitted = await writeMany(
+    loans.flatMap(({ k, a, g, s, mandateId }) => [
+      operation(k + ".accept", g, a.mandates, "MandateRegistry", "accept", [
         mandateId,
-      ]);
-      const sub = await write(
-        k + ".submit",
-        a,
-        g.registry,
+      ]),
+      operation(k + ".submit", a, g.registry, "GalleryRegistry", "submit", [
+        hashLabel(s.id),
+        a.mandates,
+        mandateId,
+        a.settlement,
+      ]),
+    ]),
+  );
+  for (const loan of loans) {
+    for (const e of events(
+      submitted.get(loan.k + ".submit"),
+      loan.g.registry,
+      "GalleryRegistry",
+      "ArtworkSubmitted",
+    )) {
+      const record = await read(
+        loan.g.registry,
         "GalleryRegistry",
-        "submit",
-        [hashLabel(s.id), a.mandates, mandateId, a.settlement],
+        "submissions",
+        [e.submissionId],
       );
-      const submissionId = event(sub, "ArtworkSubmitted", "GalleryRegistry")
-        ?.args.submissionId;
-      if (!submissionId) throw Error("Missing submission event");
-      await write(k + ".decide", g, g.registry, "GalleryRegistry", "decide", [
+      if (eq(record[1], loan.a.mandates) && record[2] === loan.mandateId) {
+        loan.submissionId = e.submissionId;
+        break;
+      }
+    }
+    if (!loan.submissionId)
+      throw Error("Missing submission event for " + loan.k);
+  }
+  await writeMany(
+    loans.flatMap(({ k, a, g, w, s, mandateId, submissionId }) => [
+      operation(k + ".decide", g, g.registry, "GalleryRegistry", "decide", [
         submissionId,
         true,
-      ]);
-      if (s.status === "current")
-        await write(k + ".list", g, a.settlement, "SimpleSettlement", "list", [
-          mandateId,
-          parseEther(w.price),
-        ]);
-    }
-  }
+      ]),
+      ...(s.status === "current"
+        ? [
+            operation(
+              k + ".list",
+              g,
+              a.settlement,
+              "SimpleSettlement",
+              "list",
+              [mandateId, parseEther(w.price)],
+            ),
+          ]
+        : []),
+    ]),
+  );
+  const finishing = [];
   for (const w of catalogue.works.filter((w) => w.owner === w.artist)) {
     const a = participants.find((p) => p.name === w.artist);
     const token = await read(a.registry, "ArtworkRegistry", "getTokenId", [
       hashLabel(w.id),
     ]);
-    await write(
-      "direct." + w.id,
-      a,
-      a.settlement,
-      "SimpleSettlement",
-      "listDirect",
-      [
-        token,
-        parseEther(w.price),
-        (await pc.getBlock()).timestamp + 365n * 86400n,
-      ],
+    finishing.push(
+      operation(
+        "direct." + w.id,
+        a,
+        a.settlement,
+        "SimpleSettlement",
+        "listDirect",
+        [
+          token,
+          parseEther(w.price),
+          (await pc.getBlock()).timestamp + 365n * 86400n,
+        ],
+      ),
     );
   }
   for (const h of catalogue.history) {
@@ -462,24 +572,27 @@ export async function seedCatalogue({
     const w = catalogue.works.find((w) => w.id === h.workId);
     const a = participants.find((p) => p.name === w.artist);
     const kind = h.title.startsWith("Purchased") ? 3 : h.showId ? 2 : 1;
-    await write(
-      "history." + i,
-      a,
-      a.registry,
-      "ArtworkRegistry",
-      "recordHistory",
-      [
-        hashLabel(w.id),
-        {
-          referenceId: keccak256(stringToHex("catalogue-v1:" + i)),
-          kind,
-          occurredAt: date(h.date),
-          title: artworkLabel(h.title),
-          detail: h.detail,
-        },
-      ],
+    finishing.push(
+      operation(
+        "history." + i,
+        a,
+        a.registry,
+        "ArtworkRegistry",
+        "recordHistory",
+        [
+          hashLabel(w.id),
+          {
+            referenceId: keccak256(stringToHex("catalogue-v1:" + i)),
+            kind,
+            occurredAt: date(h.date),
+            title: artworkLabel(h.title),
+            detail: h.detail,
+          },
+        ],
+      ),
     );
   }
+  await writeMany(finishing);
   // Publish only actual, resolved registries and verified receipt evidence.
   const namespaces = [];
   for (const p of participants) {

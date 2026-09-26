@@ -59,3 +59,11 @@ The catalogue's 26 referenced content blocks, including all five imported EON MU
 Repeat publishing with `scripts/seed/pin-filebase.mjs`. Configure AWS credentials outside the repository, set `FILEBASE_BUCKET`, and set `IPFS_BIN` and `IPFS_PATH` to an initialized Kubo repository. The script verifies input hashes, skips existing uploads, checks returned CIDs, and writes `output/filebase-pins.json`. Use Filebase's IPFS S3 endpoint `https://s3.filebase.com`, rather than its general object-storage endpoint.
 
 The public gateway is `https://ipfs.filebase.io/ipfs/<CID>`. Cloudflare's bundled copies remain a fallback. Pin persistence depends on maintaining the Filebase account and its pins.
+
+## Wallet batching
+
+The admin page enables “Batch confirmations” by default. It checks the connected wallet's Sepolia `atomic` capability via EIP-5792 before sending writes. Unsupported wallets stop with an explanation; explicitly disable batching to use individual transactions.
+
+Exhibitions, loan creation, acceptance/submission, approval/listing, and direct listings/history execute in dependency phases, with at most eight operations per batch. Setup and minting retain their individual transaction flow. Each call is simulated before requesting an atomic wallet batch. The checkpoint saves the wallet batch ID before waiting, then maps its successful receipt to every operation key. Refreshing resumes pending batch status rather than resubmitting calls; failed batches stop without automatic retry. Existing single-transaction checkpoints remain compatible.
+
+`npm run seed:verify:batch` validates real atomic EVM execution on the isolated local chain using a test wallet execution harness, including interrupted status polling, multiple events per receipt, incremental catalogue growth, and duplicate-free resume. This is not a claim of end-to-end MetaMask acceptance; the live wallet performs its own capability and confirmation flow.

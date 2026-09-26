@@ -32,7 +32,8 @@
     "seed:verify:admin": "node scripts/seed/verify-admin.mjs",
     "test:admin": "node scripts/browser-admin.mjs",
     "seed:assets:named": "node scripts/seed/named-assets.mjs",
-    "seed:pin": "node scripts/seed/pin-assets.mjs"
+    "seed:pin": "node scripts/seed/pin-assets.mjs",
+    "seed:verify:batch": "node scripts/seed/verify-admin.mjs --batch"
   },
   "dependencies": {
     "multiformats": "latest",

@@ -113,6 +113,7 @@ try {
     timeout: 30000,
   });
   assert.equal(sends, 0);
+  await page.getByLabel("Batch confirmations", { exact: false }).uncheck();
   await page
     .getByRole("button", { name: "Launch Sepolia seed", exact: true })
     .click();
@@ -120,9 +121,10 @@ try {
     timeout: 120000,
   });
   await page.reload();
-  await expect(
-    page.getByLabel("Leonardo da Vinci · artist"),
-  ).toHaveValue("davinci.eth");
+  await expect(page.getByLabel("Leonardo da Vinci · artist")).toHaveValue(
+    "davinci.eth",
+  );
+  await page.getByLabel("Batch confirmations", { exact: false }).uncheck();
   await page.getByRole("button", { name: "Resume seed", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Browse published artwork ↗" }),

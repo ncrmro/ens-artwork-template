@@ -29,6 +29,7 @@ export default function Admin() {
   const [message, setMessage] = useState(
     "Connect the wallet that owns ncrmro.eth on Sepolia.",
   );
+  const [batch, setBatch] = useState(true);
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -259,6 +260,7 @@ export default function Admin() {
         },
         status: (s: string) => setMessage(s),
         checkOnly,
+        batch,
       };
       await runAdminSeed(options);
       if (checkOnly)
@@ -421,14 +423,24 @@ export default function Admin() {
                 past token transfers.
               </p>
               <p>
-                Each deployment and write requires a Sepolia wallet confirmation
-                (multiple transactions per participant and artwork). Artworks
-                are minted first, after each artist’s ENS setup; galleries,
-                loans and sales follow. You can reject a prompt and resume later
-                from this browser. Keep your checkpoint backup. The completed
-                index is published on-chain beneath ncrmro.eth and is read by
-                both live websites automatically.
+                Setup and artwork minting use individual confirmations. With
+                batching enabled, exhibition, loan, listing and history writes
+                are grouped into up to eight operations per confirmation.
+                Artworks are minted first, after each artist’s ENS setup;
+                galleries, loans and sales follow. You can reject a prompt and
+                resume later from this browser. Keep your checkpoint backup. The
+                completed index is published on-chain beneath ncrmro.eth and is
+                read by both live websites automatically.
               </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={batch}
+                  disabled={busy}
+                  onChange={(e) => setBatch(e.target.checked)}
+                />{" "}
+                Batch confirmations (up to 8 operations per prompt)
+              </label>
               <div className="config-grid">
                 <button
                   className="button"

@@ -44,6 +44,65 @@ try {
     account: owner,
     transport: http(rpc),
   });
+  const useBatches = process.argv.includes("--batch");
+  let batchPrompts = 0,
+    loseBatchResponse = true;
+  if (useBatches) {
+    // Model wallet account execution with real EVM calls, retaining the admin address.
+    const solc = (await import("solc")).default;
+    const source =
+      "pragma solidity ^0.8.30; contract BatchWallet { function onERC1155Received(address,address,uint256,uint256,bytes calldata) external pure returns(bytes4) {return 0xf23a6e61;} function execute(address[] calldata targets, bytes[] calldata data) external { require(msg.sender == address(this)); for(uint i; i<targets.length; i++){ (bool ok, bytes memory result)=targets[i].call(data[i]); if(!ok){assembly {revert(add(result,32),mload(result))}} } } }";
+    const compiled = JSON.parse(
+      solc.compile(
+        JSON.stringify({
+          language: "Solidity",
+          sources: { "BatchWallet.sol": { content: source } },
+          settings: {
+            outputSelection: {
+              "*": { "*": ["abi", "evm.deployedBytecode.object"] },
+            },
+          },
+        }),
+      ),
+    ).contracts["BatchWallet.sol"].BatchWallet;
+    await pc.request({
+      method: "anvil_setCode",
+      params: [owner, "0x" + compiled.evm.deployedBytecode.object],
+    });
+    const request = w.request.bind(w);
+    w.request = async (options) => {
+      if (options.method === "wallet_getCapabilities")
+        return { "0x7a69": { atomic: { status: "supported" } } };
+      if (options.method === "wallet_sendCalls") {
+        const batch = options.params[0];
+        assert.equal(batch.atomicRequired, true);
+        assert.ok(batch.calls.length <= 8);
+        batchPrompts++;
+        const hash = await w.writeContract({
+          address: owner,
+          abi: compiled.abi,
+          functionName: "execute",
+          args: [batch.calls.map((c) => c.to), batch.calls.map((c) => c.data)],
+        });
+        return { id: hash };
+      }
+      if (options.method === "wallet_getCallsStatus") {
+        if (loseBatchResponse) {
+          loseBatchResponse = false;
+          throw Error("Simulated reload while batch pending");
+        }
+        const receipt = await pc.waitForTransactionReceipt({
+          hash: options.params[0],
+        });
+        return {
+          status: receipt.status === "success" ? 200 : 500,
+          atomic: true,
+          receipts: [{ transactionHash: receipt.transactionHash }],
+        };
+      }
+      return request(options);
+    };
+  }
   // The injected browser provider exposes one selected account, not all Anvil accounts.
   w.getAddresses = async () => [owner];
   for (const label of [
@@ -80,6 +139,7 @@ try {
   const store = {};
   let updates = 0;
   const opts = {
+    batch: useBatches,
     pc,
     w,
     account: owner,
@@ -195,6 +255,11 @@ try {
   await assert.rejects(() => runAdminSeed(opts), /User rejected/);
   assert.ok(store.bootstrap.transactions["namespace.link"]);
   w.writeContract = realWrite;
+  if (useBatches) {
+    await assert.rejects(() => runAdminSeed(opts), /Simulated reload/);
+    assert.equal(Object.keys(store.catalogue.batches).length, 1);
+    assert.equal(batchPrompts, 1);
+  }
   const result = await runAdminSeed(opts);
   assert.equal(result.index.namespaces.length, 3);
   const confirmed = store.catalogue.transactions;
@@ -219,6 +284,16 @@ try {
     store.bootstrap.previousRegistries["davinci.eth"].toLowerCase(),
     oldNamespace.toLowerCase(),
   );
+  if (useBatches) {
+    const mintCount = catalogue.works.length;
+    assert.ok(batchPrompts < Object.keys(confirmed).length - mintCount);
+    assert.equal(
+      Object.keys(store.catalogue.batches).length,
+      batchPrompts,
+      "resume never resubmits a saved batch",
+    );
+    console.log("Atomic batch prompts:", batchPrompts);
+  }
   const after = await pc.getBlockNumber({ cacheTime: 0 });
   await runAdminSeed(opts);
   assert.equal(
