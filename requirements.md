@@ -20,3 +20,6 @@ The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119
 
 16. The local-chain demo MUST use the pinned official ENSv2 deployment on chain 31337, seed independent artist and gallery ENS names and a collector account, and support real issuance, submissions, acceptance and purchases. It MUST isolate configuration and disposable accounts from Sepolia and offer reproducible reset.
 17. Demo creation forms MUST prefill valid sample IPFS image and manifest URIs. Local-chain fixtures MUST resolve without a public gateway; the interface MUST distinguish fixtures from uploaded or publicly pinned content.
+
+18. The story demo MUST include multiple artists, galleries, exhibitions and successive collectors, with artwork-specific histories and a single canonical terms record per artwork. Listings MUST reference that record and distinguish artwork terms from gallery commission.
+19. The homepage MUST explain participant outcomes in ordinary language. A dedicated docs page MUST explain contracts, ENS resolution, data provenance and the distinction between illustrated clauses and implemented enforcement.

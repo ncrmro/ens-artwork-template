@@ -1,8 +1,39 @@
 "use client";
 import defaults from "./demo-defaults.json";
 import React, { useState } from "react";
+type Terms = {
+  id: string;
+  royaltyBps: number;
+  holdDays: number;
+  purchaseBelow: string;
+  responseDays: number;
+};
+type HistoryEvent = {
+  workId: string;
+  date: string;
+  title: string;
+  detail: string;
+  showId?: string;
+};
+const artists = ["EON MUN", "Mika Sato"];
+const galleries = ["Atelier Gallery", "Harbour Gallery"];
+const event = (
+  workId: string,
+  title: string,
+  detail: string,
+  showId?: string,
+): HistoryEvent => ({
+  workId,
+  title,
+  detail,
+  showId,
+  date: new Date().toISOString().slice(0, 10),
+});
 type Work = {
   id: string;
+  artist: string;
+  termsId: string;
+  resaleAfter?: string;
   title: string;
   medium: string;
   dimensions: string;
@@ -14,6 +45,9 @@ type Work = {
 };
 type Show = {
   id: string;
+  gallery: string;
+  dates: string;
+  status: "past" | "current";
   title: string;
   description: string;
   manifestURI?: string;
@@ -23,22 +57,35 @@ type DemoState = {
   works: Work[];
   shows: Show[];
   submissions: { work: string; show: string; accepted: boolean }[];
-  history: string[];
+  terms: Record<string, Terms>;
+  history: HistoryEvent[];
 };
-const store = "artwork-commons:demo:v1";
+const store = "artwork-commons:demo:v2";
+const makeTerms = (id: string): Terms => ({
+  id,
+  royaltyBps: 500,
+  holdDays: 180,
+  purchaseBelow: "0.4",
+  responseDays: 14,
+});
 const initial: DemoState = {
   works: [
     {
       id: "blue-mountain",
+      artist: "EON MUN",
+      termsId: "blue-mountain-terms",
       title: "Blue Mountain",
       medium: "Acrylic and gold leaf on linen",
       dimensions: "48 × 116 inches",
       price: "0.5",
-      owner: "EON MUN",
+      owner: "Rowan Ellis",
+      resaleAfter: "2027-01-06",
       variant: 0,
     },
     {
       id: "quiet-tide",
+      artist: "EON MUN",
+      termsId: "quiet-tide-terms",
       title: "Quiet Tide",
       medium: "Oil on canvas",
       dimensions: "60 × 80 cm",
@@ -48,6 +95,8 @@ const initial: DemoState = {
     },
     {
       id: "after-the-rain",
+      artist: "EON MUN",
+      termsId: "after-the-rain-terms",
       title: "After the Rain",
       medium: "Pigment and graphite on paper",
       dimensions: "42 × 60 cm",
@@ -55,20 +104,174 @@ const initial: DemoState = {
       owner: "EON MUN",
       variant: 2,
     },
+    {
+      id: "folded-light",
+      artist: "Mika Sato",
+      termsId: "folded-light-terms",
+      title: "Folded Light",
+      medium: "Porcelain and glaze",
+      dimensions: "32 × 18 × 18 cm",
+      price: "0.35",
+      owner: "Alex Chen",
+      resaleAfter: "2026-12-01",
+      variant: 1,
+    },
+    {
+      id: "red-earth",
+      artist: "Mika Sato",
+      termsId: "red-earth-terms",
+      title: "Red Earth",
+      medium: "Mineral pigment on paper",
+      dimensions: "40 × 60 cm",
+      price: "0.25",
+      owner: "Mika Sato",
+      variant: 2,
+    },
   ],
+  terms: Object.fromEntries(
+    [
+      "blue-mountain",
+      "quiet-tide",
+      "after-the-rain",
+      "folded-light",
+      "red-earth",
+    ].map((id) => [id + "-terms", makeTerms(id + "-terms")]),
+  ),
   shows: [
     {
       id: "tokyo",
+      gallery: "Atelier Gallery",
+      dates: "May–June 2026",
+      status: "past",
       title: "Between Earth & Ether",
       description:
         "Physical works, independent identities. A Tokyo exhibition exploring landscape, material and memory.",
-      works: ["blue-mountain", "quiet-tide"],
+      works: ["blue-mountain", "quiet-tide", "folded-light"],
+    },
+    {
+      id: "harbour",
+      gallery: "Harbour Gallery",
+      dates: "July–August 2026",
+      status: "past",
+      title: "Material & Memory",
+      description: "A travelling conversation between landscape and sculpture.",
+      works: ["blue-mountain", "folded-light"],
+    },
+    {
+      id: "common-ground",
+      gallery: "Atelier Gallery",
+      dates: "September–October 2026",
+      status: "current",
+      title: "Common Ground",
+      description:
+        "Works by independent artists, brought together with their histories intact.",
+      works: ["blue-mountain", "red-earth"],
     },
   ],
   submissions: [],
   history: [
-    "EON MUN issued Blue Mountain. Genesis locked.",
-    "Atelier Gallery accepted Blue Mountain for Between Earth & Ether.",
+    {
+      workId: "blue-mountain",
+      date: "2025-11-08",
+      title: "Created by EON MUN",
+      detail: "Original artist and one canonical terms record established.",
+    },
+    {
+      workId: "blue-mountain",
+      date: "2026-01-04",
+      title: "Purchased by Alex Chen",
+      detail: "EON MUN → Alex Chen · 0.6 demo ETH · direct primary sale.",
+    },
+    {
+      workId: "blue-mountain",
+      date: "2026-05-01",
+      title: "Exhibited at Atelier Gallery",
+      detail:
+        "Between Earth & Ether · alongside works by Mika Sato. Alex retained ownership.",
+      showId: "tokyo",
+    },
+    {
+      workId: "blue-mountain",
+      date: "2026-07-01",
+      title: "Exhibited at Harbour Gallery",
+      detail: "Material & Memory · a new gallery, the same artwork and terms.",
+      showId: "harbour",
+    },
+    {
+      workId: "blue-mountain",
+      date: "2026-07-10",
+      title: "Purchased by Rowan Ellis",
+      detail:
+        "Alex Chen → Rowan Ellis · 0.8 demo ETH · 0.04 artist royalty · 0.08 gallery commission · 0.68 seller proceeds.",
+      showId: "harbour",
+    },
+    {
+      workId: "blue-mountain",
+      date: "2026-09-01",
+      title: "Exhibited again at Atelier Gallery",
+      detail:
+        "Common Ground · loaned by Rowan Ellis. Ownership did not change.",
+      showId: "common-ground",
+    },
+    {
+      workId: "folded-light",
+      date: "2026-02-12",
+      title: "Created by Mika Sato",
+      detail: "Original artist and independent terms record established.",
+    },
+    {
+      workId: "folded-light",
+      date: "2026-05-01",
+      title: "Exhibited at Atelier Gallery",
+      detail: "Between Earth & Ether · shown alongside EON MUN.",
+      showId: "tokyo",
+    },
+    {
+      workId: "folded-light",
+      date: "2026-06-04",
+      title: "Purchased by Alex Chen",
+      detail: "Mika Sato → Alex Chen · 0.35 demo ETH · gallery primary sale.",
+      showId: "tokyo",
+    },
+    {
+      workId: "folded-light",
+      date: "2026-07-01",
+      title: "Exhibited at Harbour Gallery",
+      detail: "Material & Memory · loaned by Alex Chen.",
+      showId: "harbour",
+    },
+    {
+      workId: "red-earth",
+      date: "2026-08-20",
+      title: "Created by Mika Sato",
+      detail: "Available directly from its original artist.",
+    },
+    {
+      workId: "red-earth",
+      date: "2026-09-01",
+      title: "Exhibited at Atelier Gallery",
+      detail: "Common Ground · shown alongside EON MUN.",
+      showId: "common-ground",
+    },
+    {
+      workId: "quiet-tide",
+      date: "2026-04-12",
+      title: "Created by EON MUN",
+      detail: "Original artist retains ownership.",
+    },
+    {
+      workId: "quiet-tide",
+      date: "2026-05-01",
+      title: "Exhibited at Atelier Gallery",
+      detail: "Between Earth & Ether.",
+      showId: "tokyo",
+    },
+    {
+      workId: "after-the-rain",
+      date: "2026-08-10",
+      title: "Created by EON MUN",
+      detail: "Available directly from its original artist.",
+    },
   ],
 };
 function input(label: string, name: string, value = "", type = "text") {
@@ -92,6 +295,8 @@ export default function Demo({ page }: { page: string }) {
   });
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState(false);
+  const [artistFilter, setArtistFilter] = useState("all");
+  const [galleryFilter, setGalleryFilter] = useState("all");
   const q = new URLSearchParams(location.search);
   const work = state.works.find((w) => w.id === q.get("id")) || state.works[0];
   const show = state.shows.find((s) => s.id === q.get("id")) || state.shows[0];
@@ -100,16 +305,37 @@ export default function Demo({ page }: { page: string }) {
     setState(next);
     setNotice(message);
   }
-  function buy(w: Work, via: string) {
+  function buy(w: Work, via: string, showId?: string) {
+    if (w.owner !== w.artist) {
+      setNotice(
+        "This work is in a private collection. Its history and canonical terms remain available.",
+      );
+      return;
+    }
     update(
       {
         ...state,
         works: state.works.map((x) =>
-          x.id === w.id ? { ...x, owner: "You (demo collector)" } : x,
+          x.id === w.id
+            ? {
+                ...x,
+                owner: "You (demo collector)",
+                resaleAfter: new Date(
+                  Date.now() + state.terms[x.termsId].holdDays * 86400000,
+                )
+                  .toISOString()
+                  .slice(0, 10),
+              }
+            : x,
         ),
         history: [
           ...state.history,
-          `Demo collector purchased ${w.title} ${via}. Original artist remains EON MUN.`,
+          event(
+            w.id,
+            "Purchased by You (demo collector)",
+            `${w.owner} → You (demo collector) · ${w.price} demo ETH ${via}. Original artist remains ${w.artist}.`,
+            showId,
+          ),
         ],
       },
       "Demo purchase complete. Ownership updated locally; no payment was made.",
@@ -123,10 +349,12 @@ export default function Demo({ page }: { page: string }) {
   const card = (w: Work) => (
     <article className="panel art-card" key={w.id}>
       <a href={"/demo/artwork/?id=" + w.id}>{artImage(w)}</a>
-      <p className="eyebrow">EON MUN · {w.medium}</p>
+      <p className="eyebrow">
+        {w.artist} · {w.medium}
+      </p>
       <h2>{w.title}</h2>
       <p>
-        {w.owner === "EON MUN" ? w.price + " demo ETH" : "Collected"} · Owner:{" "}
+        {w.owner === w.artist ? w.price + " demo ETH" : "Collected"} · Owner:{" "}
         {w.owner}
       </p>
       <a className="button" href={"/demo/artwork/?id=" + w.id}>
@@ -146,6 +374,7 @@ export default function Demo({ page }: { page: string }) {
         <nav>
           <a href="/demo/artist/">Demo artist</a>
           <a href="/demo/gallery/">Demo gallery</a>
+          <a href="/docs/">How it works</a>
           <a href="/">Exit demo</a>
         </nav>
       </header>
@@ -172,14 +401,14 @@ export default function Demo({ page }: { page: string }) {
         )}
         {page === "artist" && (
           <>
-            <p className="eyebrow">EXAMPLE ARTIST · ART.EONMUN.ETH</p>
+            <p className="eyebrow">INDEPENDENT ARTISTS · SHARED COLLECTION</p>
             <div className="page-heading">
               <div>
-                <h1>EON MUN</h1>
+                <h1>Artists & their work</h1>
                 <p className="intro">
-                  Landscapes held in pigment, light and memory.
+                  Discover work by EON MUN and Mika Sato.
                   <br />
-                  Physical artworks with a permanent digital identity.
+                  Follow each work through exhibitions, collections and sales.
                 </p>
               </div>
               <button className="button dark" onClick={() => setForm(!form)}>
@@ -187,8 +416,8 @@ export default function Demo({ page }: { page: string }) {
               </button>
             </div>
             <div className="profile-strip">
-              <span>Independent artist registry ✓</span>
-              <span>Immutable genesis ✓</span>
+              <span>Original artist always credited</span>
+              <span>One lasting artwork record</span>
               <span>5% artist resale royalty</span>
             </div>
             {form && (
@@ -203,21 +432,32 @@ export default function Demo({ page }: { page: string }) {
                       Date.now().toString(36) +
                       Math.random().toString(36).slice(2),
                     title,
+                    artist: String(f.get("artist")),
+                    termsId: "",
                     medium: String(f.get("medium")),
                     dimensions: String(f.get("dimensions")),
                     price: String(f.get("price")),
-                    owner: "EON MUN",
+                    owner: String(f.get("artist")),
                     variant: state.works.length % 3,
                     imageURI: String(f.get("image")),
                     manifestURI: String(f.get("manifest")),
                   };
+                  w.termsId = w.id + "-terms";
                   update(
                     {
                       ...state,
+                      terms: {
+                        ...state.terms,
+                        [w.termsId]: makeTerms(w.termsId),
+                      },
                       works: [...state.works, w],
                       history: [
                         ...state.history,
-                        `EON MUN issued ${title}. Demo genesis locked.`,
+                        event(
+                          w.id,
+                          `Created by ${w.artist}`,
+                          `${title} issued with one canonical terms record.`,
+                        ),
                       ],
                     },
                     "Demo artwork created. It appears in your collection.",
@@ -227,6 +467,14 @@ export default function Demo({ page }: { page: string }) {
               >
                 <h2>New demo artwork</h2>
                 <div className="config-grid">
+                  <label>
+                    Artist
+                    <select name="artist" aria-label="Artist">
+                      {artists.map((a) => (
+                        <option key={a}>{a}</option>
+                      ))}
+                    </select>
+                  </label>
                   {input("Artwork title", "title", "Blue Mountain Study")}
                   {input("Image IPFS URI", "image", defaults.image)}
                   {input("Manifest IPFS URI", "manifest", defaults.manifest)}
@@ -241,15 +489,35 @@ export default function Demo({ page }: { page: string }) {
                 <button className="button dark">Create demo artwork</button>
               </form>
             )}
-            <div className="catalogue">{state.works.map(card)}</div>
+            <label>
+              Browse artist
+              <select
+                value={artistFilter}
+                onChange={(e) => setArtistFilter(e.target.value)}
+              >
+                <option value="all">All artists</option>
+                {artists.map((a) => (
+                  <option key={a}>{a}</option>
+                ))}
+              </select>
+            </label>
+            <div className="catalogue">
+              {state.works
+                .filter(
+                  (w) => artistFilter === "all" || w.artist === artistFilter,
+                )
+                .map(card)}
+            </div>
           </>
         )}
         {page === "gallery" && (
           <>
-            <p className="eyebrow">EXAMPLE GALLERY · EXHIBITIONS.ATELIER.ETH</p>
+            <p className="eyebrow">
+              INDEPENDENT GALLERIES · PAST & PRESENT EXHIBITIONS
+            </p>
             <div className="page-heading">
               <div>
-                <h1>Atelier Gallery</h1>
+                <h1>Galleries & exhibitions</h1>
                 <p className="intro">
                   A space for art and the relationships around it.
                   <br />
@@ -271,6 +539,9 @@ export default function Demo({ page }: { page: string }) {
                       Date.now().toString(36) +
                       Math.random().toString(36).slice(2),
                     title: String(f.get("title")),
+                    gallery: String(f.get("gallery")),
+                    dates: "New exhibition",
+                    status: "current",
                     description: String(f.get("description")),
                     manifestURI: String(f.get("manifest")),
                     works: [],
@@ -283,6 +554,14 @@ export default function Demo({ page }: { page: string }) {
                 }}
               >
                 <h2>New demo exhibition</h2>
+                <label>
+                  Gallery
+                  <select name="gallery" aria-label="Gallery">
+                    {galleries.map((g) => (
+                      <option key={g}>{g}</option>
+                    ))}
+                  </select>
+                </label>
                 {input("Exhibition title", "title", "Between Earth & Ether")}
                 {input(
                   "Exhibition manifest IPFS URI",
@@ -297,21 +576,40 @@ export default function Demo({ page }: { page: string }) {
                 <button className="button dark">Create demo exhibition</button>
               </form>
             )}
+            <label>
+              Browse gallery
+              <select
+                value={galleryFilter}
+                onChange={(e) => setGalleryFilter(e.target.value)}
+              >
+                <option value="all">All galleries</option>
+                {galleries.map((g) => (
+                  <option key={g}>{g}</option>
+                ))}
+              </select>
+            </label>
             <div className="catalogue">
-              {state.shows.map((s) => (
-                <article className="panel art-card" key={s.id}>
-                  {artImage(
-                    state.works.find((w) => w.id === s.works[0]) ||
-                      state.works[0],
-                  )}
-                  <p className="eyebrow">EXHIBITION · {s.works.length} WORKS</p>
-                  <h2>{s.title}</h2>
-                  <p>{s.description}</p>
-                  <a className="button" href={"/demo/exhibition/?id=" + s.id}>
-                    View exhibition ↗
-                  </a>
-                </article>
-              ))}
+              {state.shows
+                .filter(
+                  (s) => galleryFilter === "all" || s.gallery === galleryFilter,
+                )
+                .map((s) => (
+                  <article className="panel art-card" key={s.id}>
+                    {artImage(
+                      state.works.find((w) => w.id === s.works[0]) ||
+                        state.works[0],
+                    )}
+                    <p className="eyebrow">
+                      {s.gallery} · {s.status} · {s.works.length} WORKS
+                    </p>
+                    <p>{s.dates}</p>
+                    <h2>{s.title}</h2>
+                    <p>{s.description}</p>
+                    <a className="button" href={"/demo/exhibition/?id=" + s.id}>
+                      View exhibition ↗
+                    </a>
+                  </article>
+                ))}
             </div>
             <section className="panel">
               <h2>Artist submissions</h2>
@@ -323,7 +621,7 @@ export default function Demo({ page }: { page: string }) {
                     <div className="submission" key={s.work + s.show}>
                       <h3>{w.title}</h3>
                       <p>
-                        EON MUN →{" "}
+                        {w.artist} →{" "}
                         {state.shows.find((x) => x.id === s.show)?.title} · 10%
                         gallery commission
                       </p>
@@ -346,7 +644,12 @@ export default function Demo({ page }: { page: string }) {
                               ),
                               history: [
                                 ...state.history,
-                                `Atelier Gallery accepted ${w.title}. The artist retains ownership.`,
+                                event(
+                                  w.id,
+                                  `Exhibited at ${state.shows.find((x) => x.id === s.show)?.gallery}`,
+                                  `${state.shows.find((x) => x.id === s.show)?.title}. Ownership remains with ${w.owner}.`,
+                                  s.show,
+                                ),
                               ],
                             },
                             "Accepted. Artwork is now displayed in the exhibition.",
@@ -379,7 +682,7 @@ export default function Demo({ page }: { page: string }) {
                 </p>
                 <dl className="facts">
                   <dt>Original artist</dt>
-                  <dd>EON MUN</dd>
+                  <dd>{work.artist}</dd>
                   <dt>Current owner</dt>
                   <dd>{work.owner}</dd>
                   <dt>Image IPFS URI</dt>
@@ -393,15 +696,30 @@ export default function Demo({ page }: { page: string }) {
                 </dl>
                 <button
                   className="button dark"
-                  disabled={work.owner !== "EON MUN"}
+                  disabled={work.owner !== work.artist}
                   onClick={() => buy(work, "directly from the artist")}
                 >
-                  {work.owner === "EON MUN"
+                  {work.owner === work.artist
                     ? "Buy directly from artist ↗"
                     : "Collected ✓"}
                 </button>
               </div>
             </div>
+            <section className="panel" id="terms">
+              <h2>Terms that travel with this artwork</h2>
+              <TermsView work={work} terms={state.terms[work.termsId]} />
+            </section>
+            <section className="panel">
+              <h2>Exhibition history</h2>
+              {state.shows
+                .filter((s) => s.works.includes(work.id))
+                .map((s) => (
+                  <p key={s.id}>
+                    <a href={"/demo/exhibition/?id=" + s.id}>{s.title}</a> ·{" "}
+                    {s.gallery} · {s.dates}
+                  </p>
+                ))}
+            </section>
             <form
               className="panel"
               onSubmit={(e) => {
@@ -427,7 +745,12 @@ export default function Demo({ page }: { page: string }) {
                     ],
                     history: [
                       ...state.history,
-                      `EON MUN submitted ${work.title} to Atelier Gallery.`,
+                      event(
+                        work.id,
+                        "Submitted to an exhibition",
+                        `${work.owner} submitted ${work.title} to ${state.shows.find((s) => s.id === show)?.gallery}.`,
+                        show,
+                      ),
                     ],
                   },
                   "Submitted. Switch to Demo gallery to accept it.",
@@ -442,18 +765,21 @@ export default function Demo({ page }: { page: string }) {
                   name="show"
                   required
                 >
-                  {state.shows.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title}
-                    </option>
-                  ))}
+                  {state.shows
+                    .filter((s) => s.status === "current")
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title}
+                      </option>
+                    ))}
                 </select>
               </label>
               <p>
                 Gallery receives exhibition and sale authority with 10%
-                commission. Ownership stays with the artist until purchase.
+                commission. Ownership stays with the current owner until
+                purchase.
               </p>
-              <button className="button" disabled={work.owner !== "EON MUN"}>
+              <button className="button" disabled={work.owner !== work.artist}>
                 Submit demo artwork ↗
               </button>
             </form>
@@ -461,7 +787,9 @@ export default function Demo({ page }: { page: string }) {
         )}
         {page === "exhibition" && (
           <>
-            <p className="eyebrow">ATELIER GALLERY · DEMO EXHIBITION</p>
+            <p className="eyebrow">
+              {show.gallery} · {show.status} DEMO EXHIBITION · {show.dates}
+            </p>
             <h1>{show.title}</h1>
             <p className="intro">{show.description}</p>
             <div className="catalogue">
@@ -471,17 +799,28 @@ export default function Demo({ page }: { page: string }) {
                   <article className="panel art-card" key={w.id}>
                     {artImage(w)}
                     <h2>{w.title}</h2>
-                    <p>Artist: EON MUN · Owner: {w.owner}</p>
+                    <p>
+                      Artist: {w.artist} · Owner: {w.owner}
+                    </p>
                     <p>{w.price} demo ETH · Gallery commission: 10%</p>
                     <a href={"/demo/artwork/?id=" + w.id}>Artwork identity ↗</a>
+                    <p>
+                      <a href={"/demo/artwork/?id=" + w.id + "#terms"}>
+                        Canonical artwork terms ↗
+                      </a>{" "}
+                      · {state.terms[w.termsId].royaltyBps / 100}% artist resale
+                      royalty
+                    </p>
                     <button
                       className="button dark"
-                      disabled={w.owner !== "EON MUN"}
-                      onClick={() => buy(w, "through Atelier Gallery")}
+                      disabled={show.status === "past" || w.owner !== w.artist}
+                      onClick={() => buy(w, "through " + show.gallery, show.id)}
                     >
-                      {w.owner === "EON MUN"
-                        ? "Buy from exhibition ↗"
-                        : "Collected ✓"}
+                      {show.status === "past"
+                        ? "Past exhibition"
+                        : w.owner === w.artist
+                          ? "Buy from exhibition ↗"
+                          : "Collected ✓"}
                     </button>
                   </article>
                 ))}
@@ -497,12 +836,39 @@ export default function Demo({ page }: { page: string }) {
         <section className="panel">
           <h2>One continuous history</h2>
           <ol>
-            {state.history.map((h, i) => (
-              <li key={i}>{h}</li>
-            ))}
+            {state.history
+              .filter((h) =>
+                page === "artwork"
+                  ? h.workId === work.id
+                  : page === "exhibition"
+                    ? h.showId === show.id
+                    : true,
+              )
+              .slice()
+              .sort((a, b) => a.date.localeCompare(b.date))
+              .map((h, i) => (
+                <li className="history-event" key={i}>
+                  <time dateTime={h.date}>{h.date}</time>
+                  <h3>{h.title}</h3>
+                  <p>{h.detail}</p>
+                  <a href={"/demo/artwork/?id=" + h.workId}>
+                    {state.works.find((w) => w.id === h.workId)?.title}
+                  </a>
+                  {h.showId && (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <a href={"/demo/exhibition/?id=" + h.showId}>
+                        View exhibition
+                      </a>
+                    </>
+                  )}
+                </li>
+              ))}
           </ol>
           <p className="fine">
-            Illustrative demo records. Physical delivery, legal execution and
+            Illustrative demo records; Mika Sato, Harbour Gallery and the
+            collectors are fictional. Physical delivery, legal execution and
             universal royalty enforcement are outside this demo.
           </p>
         </section>
@@ -511,8 +877,45 @@ export default function Demo({ page }: { page: string }) {
         <span>
           EON MUN is the example artist. Artwork Commons is the platform.
         </span>
-        <a href="/">Return to live Sepolia platform ↗</a>
+        <a href="/docs/">Contracts, records & enforcement ↗</a>
+        <a href="/">Return to the platform ↗</a>
       </footer>
+    </>
+  );
+}
+
+function TermsView({ work, terms }: { work: Work; terms: Terms }) {
+  return (
+    <>
+      <p>
+        One canonical record: <code>{terms.id}</code>. Exhibitions and sales
+        refer back to these terms; they do not create new versions.
+      </p>
+      <dl className="facts">
+        <dt>Artist resale royalty</dt>
+        <dd>
+          {terms.royaltyBps / 100}% to {work.artist} on supported resales.
+        </dd>
+        <dt>Holding period</dt>
+        <dd>
+          {terms.holdDays} days after purchase.
+          {work.resaleAfter
+            ? " Next proposed resale date: " + work.resaleAfter + "."
+            : " Starts after the first purchase."}
+        </dd>
+        <dt>Artist purchase option</dt>
+        <dd>
+          Before a resale below {terms.purchaseBelow} ETH, offer {work.artist}{" "}
+          the same price and terms, with {terms.responseDays} days to respond.
+        </dd>
+      </dl>
+      <p>
+        The holding period and purchase option are illustrative agreement
+        clauses, not protections enforced by the current contracts. Royalties
+        are accounted for by supported settlement transactions. Gallery
+        commission is agreed separately for each sale.
+      </p>
+      <a href="/docs/#terms">See how terms and enforcement work ↗</a>
     </>
   );
 }

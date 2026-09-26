@@ -69,3 +69,11 @@ See [requirements](requirements.md), [acceptance](docs/acceptance.md), and [arch
 ## Seeded local ENSv2 demo
 
 Run the real artist → gallery → collector flow on chain 31337 with `eonmun.eth` and `atelier.eth`. See [local demo setup and walkthrough](docs/local-demo.md). The primary local app uses the recorded Tailscale URL; public deployments continue to use Sepolia. Both the local-chain forms and the separate mock demo have sample IPFS defaults.
+
+## Presentation story and technical guide
+
+The homepage explains the platform for artists, galleries and collectors. `/docs/` is the technical companion: contract responsibilities, ENSv2 namespace resolution, canonical terms, settlement and the difference between recorded clauses and implemented enforcement.
+
+The wallet-free `/demo/` story now includes EON MUN and fictional artist Mika Sato, Atelier and Harbour galleries, three exhibitions and successive collectors Alex Chen and Rowan Ellis. Blue Mountain keeps the same artist and terms record as it moves between collections and exhibitions. Artwork pages scope the timeline to that work; exhibition cards link to the same canonical terms.
+
+This richer narrative is mock data, separate from the official local-chain seed. Holding periods and artist purchase options are displayed as proposed agreement clauses, not claimed as newly enforced contract features. Run `npm run test:story` against the recorded local URL or set `BASE_URL` for a deployed site.

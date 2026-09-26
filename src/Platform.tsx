@@ -727,6 +727,7 @@ export default function Platform({ page }: { page: string }) {
           <a href={url("/artist/")}>Artist</a>
           <a href={url("/gallery/")}>Gallery</a>
           <a href="/demo/artist/">Try demo</a>
+          <a href="/docs/">How it works</a>
         </nav>
         <button className="wallet" disabled={busy} onClick={() => act(connect)}>
           {account ? short(account) : "Connect wallet ↗"}

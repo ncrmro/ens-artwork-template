@@ -40,3 +40,13 @@ The primary checkout now runs the official pinned ENSv2 deployment on Anvil chai
 Typecheck, seven contract tests, the production build and the existing injected-wallet deployment/resume regression passed. Local test accounts are disposable and unlocked only on the local devnet; no public-chain transactions are claimed.
 
 Final Next.js build: `ddRzLbD8TnlEEweO2AoxH`. Public shared platform version: `6577132e-ccab-401a-bdac-5186850508e6`. Public gallery version: `edffbb44-1592-4f18-bdd9-d2189fa636ef`. Public sites retain Sepolia configuration and receive the mock-demo IPFS form defaults.
+
+## Multi-participant story update
+
+The presentation layer now separates a plain-language homepage from `/docs/`. The story demo contains two artists, two galleries, three exhibitions and a work purchased successively by two collectors. Each artwork has one canonical terms record; gallery listings link back to it. Histories are filtered by artwork or exhibition, preserve artist attribution through purchases, and distinguish exhibitions from ownership changes. Past exhibitions do not offer purchases.
+
+The canonical story terms illustrate a 180-day holding period, a below-threshold artist purchase option and a 5% resale royalty. The interface and docs explicitly distinguish those proposed clauses from current contract enforcement. The real local-chain seed and Solidity contracts are unchanged by this presentation update.
+
+Validation: typecheck, all seven contract tests and the Next.js production build passed. The dedicated story browser checks passed locally and on both public sites, covering artist/gallery filters, successive buyers, artwork-specific history, canonical terms surviving a purchase and refresh, docs navigation, and desktop/mobile layout. The existing demo creation → submission → acceptance → purchase regression also passed on both public sites with zero blockchain writes and no page errors.
+
+Published build: `k7SvcrtxqEnZR0C3p2C-m`. Shared Worker version: `23857a15-54ee-4889-8f99-b80bfc70d1b7`. Gallery Worker version: `49fc2121-c0bf-4f52-aca6-127e6ec76b18`.

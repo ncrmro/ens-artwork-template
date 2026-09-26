@@ -1146,3 +1146,63 @@ header nav {
 main.page > .page-heading {
   padding: 28px 0 36px;
 }
+
+.home-page,
+.docs-page {
+  padding: 45px 6vw;
+}
+.home-page .intro {
+  max-width: 680px;
+  font-size: 17px;
+}
+.docs-page .section > p {
+  max-width: 850px;
+  line-height: 1.85;
+}
+.table-scroll {
+  overflow-x: auto;
+  margin: 24px 0;
+}
+.table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px;
+}
+.table-scroll th,
+.table-scroll td {
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.architecture {
+  padding: 25px;
+  background: #e8ebe0;
+  overflow-x: auto;
+  line-height: 1.8;
+}
+.history-event {
+  padding: 14px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.history-event time {
+  font-size: 11px;
+  color: #687b66;
+}
+.history-event h3 {
+  margin: 9px 0;
+}
+.facts dd {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 680px) {
+  header nav {
+    flex-wrap: wrap;
+  }
+  .home-page,
+  .docs-page {
+    padding: 30px 6vw;
+  }
+}
