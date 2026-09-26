@@ -127,7 +127,9 @@ export default function Platform({ page }: { page: string }) {
   const tenantRef = useRef<Context>(blank);
   const recordContext = useRef<Partial<Context>>({});
   const restoring = useRef(0);
-  const [names, setNames] = useState<{ name: string; allowed: boolean }[]>([]);
+  const [names, setNames] = useState<
+    { name: string; allowed: boolean; artist?: boolean; gallery?: boolean }[]
+  >([]);
   const [finding, setFinding] = useState(false);
   const [nameError, setNameError] = useState("");
   const [chosen, setChosen] = useState("");
@@ -366,7 +368,38 @@ export default function Platform({ page }: { page: string }) {
       const result = [];
       for (const name of all) {
         const allowed = await access(name, account);
-        result.push({ name, allowed });
+        let artist = false,
+          gallery = false;
+        if (allowed) {
+          const namespace = await client.readContract({
+            address: config.ens.ETHRegistry,
+            abi: parentAbi,
+            functionName: "getSubregistry",
+            args: [name.split(".")[0]],
+          });
+          if (namespace !== zeroAddress) {
+            const exists = async (label: string) => {
+              try {
+                const address = await read(
+                  namespace,
+                  "ParticipantRegistry",
+                  "getSubregistry",
+                  [label],
+                );
+                return isAddress(address) && address !== zeroAddress;
+              } catch {
+                return false;
+              }
+            };
+            [artist, gallery] = await Promise.all([
+              exists("art"),
+              exists("gallery").then(
+                async (found) => found || (await exists("exhibitions")),
+              ),
+            ]);
+          }
+        }
+        result.push({ name, allowed, artist, gallery });
       }
       if (!gone) {
         setNames(result);
@@ -436,6 +469,19 @@ export default function Platform({ page }: { page: string }) {
         ]);
       } catch {
         /* setup checks compatibility */
+      }
+    }
+    if (asGallery && namespace !== zeroAddress) {
+      try {
+        const linked = await read(
+          namespace,
+          "ParticipantRegistry",
+          "getSubregistry",
+          ["gallery"],
+        );
+        if (isAddress(linked) && linked !== zeroAddress) child = linked;
+      } catch {
+        /* Existing galleries use the exhibitions label. */
       }
     }
     if (child === zeroAddress) child = "";
@@ -997,6 +1043,7 @@ export default function Platform({ page }: { page: string }) {
   const managedParent = names.find(
     (n) =>
       n.allowed &&
+      (managingGallery ? n.gallery : n.artist) &&
       n.name === (managingGallery ? tenant.galleryName : tenant.parent),
   )?.name;
   if (!config && !error) return <PageSkeleton page={page} />;
@@ -1027,15 +1074,22 @@ export default function Platform({ page }: { page: string }) {
                 {names
                   .filter((n) => n.allowed)
                   .flatMap((n) => [
-                    <option key={"artist:" + n.name} value={"artist:" + n.name}>
-                      art.{n.name} · Artist
-                    </option>,
-                    <option
-                      key={"gallery:" + n.name}
-                      value={"gallery:" + n.name}
-                    >
-                      exhibitions.{n.name} · Gallery
-                    </option>,
+                    n.artist && (
+                      <option
+                        key={"artist:" + n.name}
+                        value={"artist:" + n.name}
+                      >
+                        art.{n.name} · Artist
+                      </option>
+                    ),
+                    n.gallery && (
+                      <option
+                        key={"gallery:" + n.name}
+                        value={"gallery:" + n.name}
+                      >
+                        gallery.{n.name} · Gallery
+                      </option>
+                    ),
                   ])}
               </select>
             </label>
