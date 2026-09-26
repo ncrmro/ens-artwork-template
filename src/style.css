@@ -1333,3 +1333,11 @@ main.page > .page-heading {
 .browse-search input {
   width: 100%;
 }
+
+.art-card h2,
+.art-card p {
+  overflow-wrap: anywhere;
+}
+.history-event {
+  overflow-wrap: anywhere;
+}

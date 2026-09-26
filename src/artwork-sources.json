@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mona-lisa",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_natural_color.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_natural_color.jpg",
+    "artist": "Leonardo da Vinci",
+    "title": "Mona Lisa",
+    "date": "1503–1519",
+    "license": "Public domain (faithful reproduction of a public-domain painting)",
+    "path": "public/artwork-sources/mona-lisa.jpg"
+  },
+  {
+    "id": "straw-hat",
+    "url": "https://images.metmuseum.org/CRDImages/ep/web-large/DT1502_cropped2.jpg",
+    "source": "https://www.metmuseum.org/art/collection/search/436532",
+    "artist": "Vincent van Gogh",
+    "title": "Self-Portrait with a Straw Hat",
+    "date": "1887",
+    "license": "CC0 / The Met Open Access",
+    "path": "public/artwork-sources/straw-hat.jpg"
+  },
+  {
+    "id": "cypresses",
+    "url": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-42549-001.jpg",
+    "source": "https://www.metmuseum.org/art/collection/search/436535",
+    "artist": "Vincent van Gogh",
+    "title": "Wheat Field with Cypresses",
+    "date": "1889",
+    "license": "CC0 / The Met Open Access",
+    "path": "public/artwork-sources/cypresses.jpg"
+  }
+]

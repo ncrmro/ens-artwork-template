@@ -97,12 +97,19 @@ try {
     ]) {
       await page.goto(base + path);
       await page.locator("main h1").waitFor();
-      if (
-        await page.evaluate(
-          () => document.documentElement.scrollWidth > innerWidth + 1,
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await new Promise(requestAnimationFrame);
+      });
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth + 1,
+            ),
+          { message: "No mobile overflow: " + path },
         )
-      )
-        throw Error("Overflow " + width + " " + path);
+        .toBe(true);
     }
   }
   await page.goto(base + "/docs/");

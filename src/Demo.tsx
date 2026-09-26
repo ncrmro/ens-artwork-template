@@ -1,5 +1,22 @@
 "use client";
-import catalogue from "./demo-catalogue.json";
+import baseCatalogue from "./demo-catalogue.json";
+import { namedCatalogue, knownNames } from "./named-catalogue";
+import imageSources from "./artwork-sources.json";
+import namedAssets from "./named-assets.json";
+import { ipfsURL } from "./ipfs";
+const named = namedCatalogue(knownNames, imageSources);
+const namedWorks = named.works.map((w: any) => ({
+  ...w,
+  imageURI: (namedAssets.works as any)[w.id].image,
+  manifestURI: (namedAssets.works as any)[w.id].manifest,
+}));
+const catalogue = {
+  ...baseCatalogue,
+  participants: [...baseCatalogue.participants, ...named.participants],
+  works: [...baseCatalogue.works, ...namedWorks],
+  shows: [...baseCatalogue.shows, ...named.shows],
+  history: [...baseCatalogue.history, ...named.history],
+};
 import defaults from "./demo-defaults.json";
 import React, { useState } from "react";
 type Terms = {
@@ -65,7 +82,7 @@ type DemoState = {
   terms: Record<string, Terms>;
   history: HistoryEvent[];
 };
-const store = "artwork-commons:demo:v3";
+const store = "artwork-commons:demo:v4";
 const makeTerms = (id: string): Terms => ({
   id,
   royaltyBps: 500,
@@ -158,7 +175,10 @@ export default function Demo({ page }: { page: string }) {
   }
   const artImage = (w: Work) => (
     <div className={"demo-image variant-" + w.variant}>
-      <img src="/blue-mountain.svg" alt={"Illustration for " + w.title} />
+      <img
+        src={w.imageURI ? ipfsURL(w.imageURI) : "/blue-mountain.svg"}
+        alt={w.title}
+      />
     </div>
   );
   const card = (w: Work) => (

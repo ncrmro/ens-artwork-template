@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AdminLink from "./AdminLink";
 export default function SiteHeader({ children }: { children?: ReactNode }) {
   return (
     <header className="site-header">
@@ -12,6 +13,7 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
         <a href="/browse/art/">Browse</a>
         <a href="/docs/">How it works</a>
         <a href="/demo/artist/">Demo</a>
+        <AdminLink />
       </nav>
       {children || (
         <a className="button" href="/workspace/">

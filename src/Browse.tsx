@@ -1,7 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { isAddress, zeroAddress, type Address } from "viem";
-import index from "./browse-index.json";
+import {
+  publicNamespaces,
+  resolveParticipant,
+  type NamespaceEntry,
+} from "./discovery";
 import { ipfsURL } from "./ipfs";
 import SiteHeader from "./SiteHeader";
 import { CollectionSkeleton } from "./PageSkeleton";
@@ -23,6 +27,8 @@ type Entry = {
 };
 export default function Browse({ kind }: { kind: string }) {
   const [config, setConfig] = useState<Config>();
+  const namespaces = useRef<NamespaceEntry[]>([]);
+  const [pending, setPending] = useState<string[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,16 +53,24 @@ export default function Browse({ kind }: { kind: string }) {
     try {
       const rows: Entry[] = [];
       const unavailable: string[] = [];
+      const waiting: string[] = [];
       for (const parent of [...new Set(names)]) {
         try {
-          const name = validateParent(parent);
-          const ns = await client.readContract({
-            address: c.ens.ETHRegistry,
-            abi: parentAbi,
-            functionName: "getSubregistry",
-            args: [name.split(".")[0]],
-          });
+          const name = parent.toLowerCase();
+          const ns = await resolveParticipant(client, c.ens.ETHRegistry, name);
           if (ns === zeroAddress) {
+            if (name.split(".").length === 2) {
+              const expiry = await client.readContract({
+                address: c.ens.ETHRegistry,
+                abi: parentAbi,
+                functionName: "findExpiry",
+                args: [name.split(".")[0]],
+              });
+              if (expiry > (await client.getBlock()).timestamp) {
+                waiting.push(name);
+                continue;
+              }
+            }
             unavailable.push(name);
             continue;
           }
@@ -94,10 +108,9 @@ export default function Browse({ kind }: { kind: string }) {
                 c.lifecycle.settlement
               )
                 q.set("sale", c.lifecycle.settlement);
-              const indexed = (
-                c.localDemo?.catalogueIndex ||
-                (index.chainId === c.chainId ? index.namespaces : [])
-              ).find((n) => n.name === "art." + name);
+              const indexed = namespaces.current.find(
+                (n) => n.name === "art." + name,
+              );
               if (indexed?.settlement && isAddress(indexed.settlement)) {
                 const linked = await read(
                   indexed.settlement,
@@ -133,11 +146,8 @@ export default function Browse({ kind }: { kind: string }) {
               type: "gallery",
               name: "exhibitions." + name,
               title:
-                (
-                  c.localDemo?.catalogueIndex ||
-                  (index.chainId === c.chainId ? index.namespaces : [])
-                ).find((n) => n.name === "exhibitions." + name)?.displayName ||
-                name,
+                namespaces.current.find((n) => n.name === "exhibitions." + name)
+                  ?.displayName || name,
               href: "/browse/exhibitions/?name=" + encodeURIComponent(name),
               detail: count + " exhibitions" + established,
             });
@@ -176,6 +186,7 @@ export default function Browse({ kind }: { kind: string }) {
               unavailable.join(", "),
           );
         setEntries(rows);
+        setPending(waiting);
         setSearched(names.length > 0);
       }
     } catch (e: any) {
@@ -191,10 +202,12 @@ export default function Browse({ kind }: { kind: string }) {
         if (!r.ok) throw Error("Configuration unavailable");
         return (await r.json()) as Config;
       })
-      .then((c) => {
+      .then(async (c) => {
         if (gone) return;
         configureChain(c);
         setConfig(c);
+        namespaces.current = await publicNamespaces(client, c);
+        if (gone) return;
         const name = new URLSearchParams(location.search).get("name");
         const local = c.localDemo?.context;
         void load(
@@ -205,11 +218,9 @@ export default function Browse({ kind }: { kind: string }) {
               ? c.localDemo?.catalogueIndex?.map((n) =>
                   n.name.split(".").slice(1).join("."),
                 ) || [local.parent, local.galleryName].filter(Boolean)
-              : index.chainId === c.chainId
-                ? index.namespaces.map((n) =>
-                    n.name.split(".").slice(1).join("."),
-                  )
-                : [],
+              : namespaces.current.map((n) =>
+                  n.name.split(".").slice(1).join("."),
+                ),
         );
       })
       .catch((e) => {
@@ -281,6 +292,20 @@ export default function Browse({ kind }: { kind: string }) {
           </button>
         </form>
         {error && <p role="alert">{error}</p>}
+        {!loading && pending.length > 0 && (
+          <section className="panel">
+            <h2>Registered names awaiting setup</h2>
+            <p>
+              These Sepolia ENS names are registered. No artwork or exhibition
+              registry has been attached yet.
+            </p>
+            <ul>
+              {pending.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         {loading ? (
           <CollectionSkeleton />
         ) : (

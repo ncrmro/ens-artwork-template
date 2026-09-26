@@ -7,18 +7,28 @@
       "settlement": ""
     },
     {
-      "name": "art.mika-sato.eth",
-      "displayName": "Mika Sato",
+      "name": "art.vangogh.eth",
+      "displayName": "vangogh.eth \u00b7 testnet demo",
       "settlement": ""
     },
     {
-      "name": "exhibitions.atelier-gallery.eth",
-      "displayName": "Atelier Gallery",
+      "name": "art.davinci.eth",
+      "displayName": "davinci.eth \u00b7 testnet demo",
       "settlement": ""
     },
     {
-      "name": "exhibitions.harbour-gallery.eth",
-      "displayName": "Harbour Gallery",
+      "name": "exhibitions.louvre.eth",
+      "displayName": "louvre.eth \u00b7 testnet demo",
+      "settlement": ""
+    },
+    {
+      "name": "exhibitions.uffizi.eth",
+      "displayName": "uffizi.eth \u00b7 testnet demo",
+      "settlement": ""
+    },
+    {
+      "name": "exhibitions.mfah.eth",
+      "displayName": "mfah.eth \u00b7 testnet demo",
       "settlement": ""
     }
   ]

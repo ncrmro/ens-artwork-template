@@ -137,6 +137,7 @@ export async function wallet() {
   }
   if ((await w.getChainId()) !== chainId)
     throw Error("Switch your wallet to the configured network.");
+  window.dispatchEvent(new Event("artwork-wallet-changed"));
   return { w, account };
 }
 export async function receipt(hash: Hex) {

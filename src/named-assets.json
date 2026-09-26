@@ -1,0 +1,36 @@
+{
+  "works": {
+    "davinci-mona-lisa": {
+      "image": "ipfs://bafkreifu36a5m63qqmkggr7ki76kg2cakdjm3n6e4rproenbt53cvsrfdm",
+      "manifest": "ipfs://bafkreihdsc5bybosgkrfw57hrdd2ltklj7basatcd4vzo3bmku2cnk6lru"
+    },
+    "eonmun-cypresses": {
+      "image": "ipfs://bafkreifpby2imyq4eefvjeznavjjibi3kya2um3cv5fyjk4x4kbr7aldxq",
+      "manifest": "ipfs://bafkreicm3tvot3fcbjs6mbtr4io3gfjcq6srmko2c4unkhf4nlujbbnpda"
+    },
+    "vangogh-straw-hat": {
+      "image": "ipfs://bafkreiad425vr7vs4ci5xvlk3nqbwp6mxiltqzac2vtwzgklqbqfrj4x3i",
+      "manifest": "ipfs://bafkreibqh2xhg26ozs6qzo4wwbi4jhcxmwbj2fwzrutkwxmx3twe7ywnta"
+    },
+    "vangogh-cypresses": {
+      "image": "ipfs://bafkreifpby2imyq4eefvjeznavjjibi3kya2um3cv5fyjk4x4kbr7aldxq",
+      "manifest": "ipfs://bafkreicm3tvot3fcbjs6mbtr4io3gfjcq6srmko2c4unkhf4nlujbbnpda"
+    }
+  },
+  "shows": {
+    "louvre-open-collection": {
+      "manifest": "ipfs://bafkreiarwzq2ivng4knfe3hqoikxnrsdrqmfk3h73nzsau7z63zse5hh5i"
+    },
+    "mfah-open-collection": {
+      "manifest": "ipfs://bafkreiarwzq2ivng4knfe3hqoikxnrsdrqmfk3h73nzsau7z63zse5hh5i"
+    },
+    "uffizi-open-collection": {
+      "manifest": "ipfs://bafkreiarwzq2ivng4knfe3hqoikxnrsdrqmfk3h73nzsau7z63zse5hh5i"
+    }
+  },
+  "images": {
+    "mona-lisa": "ipfs://bafkreifu36a5m63qqmkggr7ki76kg2cakdjm3n6e4rproenbt53cvsrfdm",
+    "straw-hat": "ipfs://bafkreiad425vr7vs4ci5xvlk3nqbwp6mxiltqzac2vtwzgklqbqfrj4x3i",
+    "cypresses": "ipfs://bafkreifpby2imyq4eefvjeznavjjibi3kya2um3cv5fyjk4x4kbr7aldxq"
+  }
+}
