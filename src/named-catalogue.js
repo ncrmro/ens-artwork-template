@@ -1,3 +1,4 @@
+import { withEonmunArtworks } from "./eonmun-import.js";
 // Shared staged and real-chain catalogue. Historical events are explicitly fictional.
 const profiles = {
   eonmun: {
@@ -93,5 +94,12 @@ export function namedCatalogue(names, sources) {
         w.imageSource,
     },
   ]);
-  return { participants, works, shows, history, submissions: [], terms: {} };
+  return withEonmunArtworks({
+    participants,
+    works,
+    shows,
+    history,
+    submissions: [],
+    terms: {},
+  });
 }

@@ -1,3 +1,4 @@
+import { eonmunAssets } from "./eonmun-import.js";
 import { artworkLabel } from "./artwork-label.js";
 import {
   createPublicClient,
@@ -267,7 +268,12 @@ export async function seedCatalogue({
   }
   // Complete each artist's issuance before configuring galleries or sales.
   const issuanceFirst = [
-    ...participants.filter((p) => p.kind === "artist"),
+    ...participants
+      .filter((p) => p.kind === "artist")
+      .sort(
+        (a, b) =>
+          Number(b.parent === "eonmun.eth") - Number(a.parent === "eonmun.eth"),
+      ),
     ...participants.filter((p) => p.kind !== "artist"),
   ];
   for (const p of issuanceFirst) {
@@ -326,7 +332,11 @@ export async function seedCatalogue({
         [date(p.establishedAt)],
       );
     if (p.kind === "artist") {
-      for (const work of catalogue.works.filter((w) => w.artist === p.name)) {
+      for (const work of catalogue.works
+        .filter((w) => w.artist === p.name)
+        .sort(
+          (a, b) => Number(!!eonmunAssets[b.id]) - Number(!!eonmunAssets[a.id]),
+        )) {
         await mintArtwork(work, p);
       }
     }

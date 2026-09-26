@@ -1,20 +1,26 @@
 "use client";
+import { eonmunAssets } from "./eonmun-import";
+import { artworkLabel } from "./artwork-label";
 import baseCatalogue from "./demo-catalogue.json";
 import { namedCatalogue, knownNames } from "./named-catalogue";
 import imageSources from "./artwork-sources.json";
 import namedAssets from "./named-assets.json";
 import { ipfsURL } from "./ipfs";
 const named = namedCatalogue(knownNames, imageSources);
+const allNamedAssets: any = { ...namedAssets.works, ...eonmunAssets };
 const namedWorks = named.works.map((w: any) => ({
   ...w,
-  imageURI: (namedAssets.works as any)[w.id].image,
-  manifestURI: (namedAssets.works as any)[w.id].manifest,
+  title: artworkLabel(w.title),
+  artist: artworkLabel(w.artist),
+  owner: artworkLabel(w.owner),
+  imageURI: allNamedAssets[w.id].image,
+  manifestURI: allNamedAssets[w.id].manifest,
 }));
 const catalogue = {
   ...baseCatalogue,
-  participants: [...baseCatalogue.participants, ...named.participants],
+  participants: [...baseCatalogue.participants, ...named.participants.map((p: any) => ({...p, name: artworkLabel(p.name)}))],
   works: [...baseCatalogue.works, ...namedWorks],
-  shows: [...baseCatalogue.shows, ...named.shows],
+  shows: [...baseCatalogue.shows, ...named.shows.map((s: any) => ({...s, gallery: artworkLabel(s.gallery)}))],
   history: [...baseCatalogue.history, ...named.history],
 };
 import defaults from "./demo-defaults.json";
@@ -109,10 +115,19 @@ function input(label: string, name: string, value = "", type = "text") {
 export default function Demo({ page }: { page: string }) {
   const [state, setState] = useState<DemoState>(() => {
     try {
-      return (
-        JSON.parse(sessionStorage.getItem(store) || "null") ||
-        structuredClone(initial)
-      );
+      const saved = JSON.parse(sessionStorage.getItem(store) || "null");
+      if (!saved) return structuredClone(initial);
+      return {
+        ...saved,
+        works: [
+          ...saved.works,
+          ...namedWorks.filter(
+            (w: Work) =>
+              w.id.startsWith("eonmun-original-") &&
+              !saved.works.some((old: Work) => old.id === w.id),
+          ),
+        ],
+      };
     } catch {
       return structuredClone(initial);
     }
@@ -349,7 +364,7 @@ export default function Demo({ page }: { page: string }) {
             <div className="catalogue">
               {state.works
                 .filter(
-                  (w) => artistFilter === "all" || w.artist === artistFilter,
+                  (w: Work) => artistFilter === "all" || w.artist === artistFilter,
                 )
                 .map(card)}
             </div>

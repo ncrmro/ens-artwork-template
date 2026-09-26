@@ -1,3 +1,4 @@
+import { eonmunAssets } from "../../src/eonmun-import.js";
 import fs from "node:fs";
 import { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
@@ -13,7 +14,7 @@ async function put(bytes) {
 for (const s of sources)
   assets.images[s.id] = await put(fs.readFileSync(s.path));
 for (const w of catalogue.works)
-  assets.works[w.id] = {
+  assets.works[w.id] = eonmunAssets[w.id] || {
     image: assets.images[w.sourceImage],
     manifest: await put(
       Buffer.from(

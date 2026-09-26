@@ -1,4 +1,5 @@
 "use client";
+import { withEonmunArtworks, eonmunAssets } from "./eonmun-import";
 import { artworkLabel } from "./artwork-label";
 import { useEffect, useRef, useState } from "react";
 import SiteHeader from "./SiteHeader";
@@ -170,7 +171,7 @@ export default function Admin() {
           localStorage.getItem(storageKey(c, accounts[0])) || "{}",
         );
         if (saved.parents) setParents(saved.parents);
-        if (saved.catalogue) setCatalogue(saved.catalogue);
+        if (saved.catalogue) setCatalogue(withEonmunArtworks(saved.catalogue));
         if (saved.allNamesMode) setAllNamesMode(true);
         setLocked(!!saved.bootstrap);
         setComplete(!!saved.index);
@@ -238,7 +239,15 @@ export default function Admin() {
         config,
         catalogue,
         contracts,
-        assets: allNamesMode ? assetsForCatalogue(catalogue) : assets,
+        assets: {
+          ...(allNamesMode ? assetsForCatalogue(catalogue) : assets),
+          works: {
+            ...(allNamesMode
+              ? assetsForCatalogue(catalogue).works
+              : assets.works),
+            ...eonmunAssets,
+          },
+        },
         parents,
         load: (part: string) =>
           saved[part === "catalogue" ? "catalogueJournal" : part],

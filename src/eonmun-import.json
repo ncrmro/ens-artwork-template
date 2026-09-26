@@ -1,0 +1,178 @@
+[
+  {
+    "id": "eonmun-original-0",
+    "title": "Prairie Royale",
+    "description": "The artwork reflects the vibrant colors of royal/imperial authority and depicts a royal prairie (meadow).",
+    "medium": "acrylic",
+    "dimensions": "",
+    "price": "0.001",
+    "variant": 0,
+    "termsId": "standard-artwork-v1",
+    "createdAt": "2024-01-01",
+    "imageURI": "https://arweave.net/hQtX9kzJY_rhTOczs4gTfgTd6PKYjiOJgQNDl6g0vuw",
+    "manifestURI": "ipfs://bafkreid6pfhitmcflw3e7lsscnivhig6dufvfpby4fmktlt2fvek6p535u",
+    "source": "https://opensea.io/item/ethereum/0xf5521d34bd29f942523a7c125ffe0e06b6d41836/0",
+    "attributes": [
+      {
+        "trait_type": "year",
+        "value": "2024"
+      },
+      {
+        "trait_type": "surface",
+        "value": "canvas"
+      },
+      {
+        "trait_type": "color",
+        "value": "purple"
+      },
+      {
+        "trait_type": "color",
+        "value": "blue"
+      },
+      {
+        "trait_type": "medium",
+        "value": "acrylic"
+      }
+    ]
+  },
+  {
+    "id": "eonmun-original-1",
+    "title": "Quiescent Citadel",
+    "description": "Sacred silhouette\nstands motionless, guardian—\nsilence keeps its vow.",
+    "medium": "watercolor",
+    "dimensions": "",
+    "price": "0.001",
+    "variant": 1,
+    "termsId": "standard-artwork-v1",
+    "createdAt": "2025-01-01",
+    "imageURI": "https://arweave.net/tGjx0qdu1wzMx8XUytM102ZOHiOwZF_u9h4WXU1uQgE",
+    "manifestURI": "ipfs://bafkreigrsikfdqgnrqrkfmsbohcbv6jyfrujrbfifgcylwwfepeegkhis4",
+    "source": "https://opensea.io/item/ethereum/0xf5521d34bd29f942523a7c125ffe0e06b6d41836/1",
+    "attributes": [
+      {
+        "trait_type": "year",
+        "value": "2025"
+      },
+      {
+        "trait_type": "surface",
+        "value": "paper"
+      },
+      {
+        "trait_type": "medium",
+        "value": "watercolor"
+      },
+      {
+        "trait_type": "color",
+        "value": "black"
+      },
+      {
+        "trait_type": "color",
+        "value": "white"
+      }
+    ]
+  },
+  {
+    "id": "eonmun-original-2",
+    "title": "Quetzalcōātlin tetl",
+    "description": "Inspired by The Temple of Quetzalcóatl (the Feathered Serpent) stone carvings found at Teotihuacan.",
+    "medium": "watercolor, pencil",
+    "dimensions": "",
+    "price": "0.001",
+    "variant": 2,
+    "termsId": "standard-artwork-v1",
+    "createdAt": "2025-01-01",
+    "imageURI": "https://arweave.net/4ISovA0lB3giEfig6L_k55tDY-FDg6cPnVHRgIsO-Zs",
+    "manifestURI": "ipfs://bafkreie7pr3yax2owa553hukvxymkedosf2w7zc26j33l7he2apqueigta",
+    "source": "https://opensea.io/item/ethereum/0xf5521d34bd29f942523a7c125ffe0e06b6d41836/2",
+    "attributes": [
+      {
+        "trait_type": "year",
+        "value": "2025"
+      },
+      {
+        "trait_type": "surface",
+        "value": "paper"
+      },
+      {
+        "trait_type": "medium",
+        "value": "watercolor"
+      },
+      {
+        "trait_type": "color",
+        "value": "grey"
+      },
+      {
+        "trait_type": "medium",
+        "value": "pencil"
+      }
+    ]
+  },
+  {
+    "id": "eonmun-original-3",
+    "title": "Equestrian Equilibrium",
+    "description": "Artwork was on display at Hardy & Nance Studios 9th Annual Black and White Art Show",
+    "medium": "watercolor",
+    "dimensions": "",
+    "price": "0.001",
+    "variant": 3,
+    "termsId": "standard-artwork-v1",
+    "createdAt": "2025-01-01",
+    "imageURI": "https://arweave.net/X9aedzrFPKIbBZcHs-HOefRXQFe3FkK6kEDiO8DrZ_s",
+    "manifestURI": "ipfs://bafkreif7xkdhkppoahcbv2tf3hxkmdy3wygmysk7ji34oxlzdfnzkcraye",
+    "source": "https://opensea.io/item/ethereum/0xf5521d34bd29f942523a7c125ffe0e06b6d41836/3",
+    "attributes": [
+      {
+        "trait_type": "year",
+        "value": "2025"
+      },
+      {
+        "trait_type": "medium",
+        "value": "watercolor"
+      },
+      {
+        "trait_type": "surface",
+        "value": "paper"
+      },
+      {
+        "trait_type": "color",
+        "value": "white"
+      },
+      {
+        "trait_type": "color",
+        "value": "black"
+      }
+    ]
+  },
+  {
+    "id": "eonmun-original-4",
+    "title": "ITEXISTS",
+    "description": "I saw this place clear\nGold cascades through pink cloud seas—\nIt exists, it calls.\n\n*an early illustration by the artist",
+    "medium": "acrylic",
+    "dimensions": "",
+    "price": "0.001",
+    "variant": 4,
+    "termsId": "standard-artwork-v1",
+    "createdAt": "2024-01-01",
+    "imageURI": "https://arweave.net/bOCqAeHkOzn8f_AmgIk44cSM8CFd0mr2Srfvd9FMX4M",
+    "manifestURI": "ipfs://bafkreif7jn4rsaoxxizlbw6khiceg6gp6vzr3s2zq7m7rjc7uxfs5kjkee",
+    "source": "https://opensea.io/item/ethereum/0xf5521d34bd29f942523a7c125ffe0e06b6d41836/4",
+    "attributes": [
+      {
+        "trait_type": "color",
+        "value": "pink"
+      },
+      {
+        "trait_type": "medium",
+        "value": "acrylic"
+      },
+      {
+        "trait_type": "year",
+        "value": "2024"
+      },
+      {
+        "trait_type": "surface",
+        "value": "canvas panel"
+      }
+    ]
+  }
+]

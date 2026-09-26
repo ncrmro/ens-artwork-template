@@ -1,3 +1,4 @@
+import { eonmunAssets } from "./eonmun-import.js";
 import bundled from "./named-assets.json";
 export function assetsForCatalogue(catalogue: any) {
   const works: Record<string, { image: string; manifest: string }> = {};
@@ -7,7 +8,7 @@ export function assetsForCatalogue(catalogue: any) {
     const reference = Object.values(bundled.works).find(
       (a) => a.image === (bundled.images as any)[w.sourceImage],
     );
-    works[w.id] = existing || reference!;
+    works[w.id] = (eonmunAssets as any)[w.id] || existing || reference!;
   }
   for (const s of catalogue.shows)
     shows[s.id] =
