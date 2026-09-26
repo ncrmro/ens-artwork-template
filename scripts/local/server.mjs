@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
       let body = "";
       for await (const chunk of req) {
         body += chunk;
-        if (Buffer.byteLength(body) > 32768)
+        if (Buffer.byteLength(body) > 131072)
           return json(413, { error: "Request too large" });
       }
       const payload = JSON.parse(body),

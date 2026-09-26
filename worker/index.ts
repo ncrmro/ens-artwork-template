@@ -56,7 +56,7 @@ export default {
           const { done, value } = await reader.read();
           if (done) break;
           total += value.length;
-          if (total > 32768) {
+          if (total > 131072) {
             await reader.cancel();
             return new Response("Request too large", { status: 413 });
           }
