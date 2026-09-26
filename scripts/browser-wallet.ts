@@ -153,16 +153,6 @@ const idle = async (p: Page) => {
     [],
   );
 };
-const link = (origin: string, path: string, c: any) =>
-  origin +
-  path +
-  "?" +
-  new URLSearchParams(
-    Object.fromEntries(Object.entries(c).filter(([, v]) => v)) as Record<
-      string,
-      string
-    >,
-  );
 try {
   const a = await createPage(artist.account.address, base);
   await a.goto(base + "/artist/");
@@ -223,12 +213,19 @@ try {
     g.getByRole("heading", { name: "Tokyo 2026", exact: true }),
   ).toBeVisible();
   const gc = await state(g, gallery.account.address);
-  const invitation = {
-    galleryName: gc.galleryName,
-    galleryNamespace: gc.galleryNamespace,
-    galleryRegistry: gc.galleryRegistry,
-  };
-  await a.goto(link(base, "/artist/", invitation));
+  const invitation = await g
+    .getByRole("link", { name: "Artist: create or select your artwork" })
+    .getAttribute("href");
+  const artistTenant = await state(a, artist.account.address);
+  await a.goto(base + invitation);
+  await expect(
+    a.getByRole("heading", { name: "Create artwork", exact: true }),
+  ).toBeVisible();
+  assert.deepEqual(
+    await state(a, artist.account.address),
+    artistTenant,
+    "Invitation must not replace the artist tenant",
+  );
   for (const [title, label] of [
     ["Blue Mountain", "blue-mountain"],
     ["Quiet Tide", "quiet-tide"],
@@ -301,6 +298,22 @@ try {
     artist.account.address.slice(0, 6),
     { ignoreCase: true },
   );
+  const savedTenant = await state(a, artist.account.address);
+  await a.goto(
+    base +
+      "/artist/?parent=attacker.eth&artwork=" +
+      gc.galleryRegistry +
+      "&galleryName=attacker.eth",
+  );
+  await expect(a.getByLabel("Managed namespace")).toHaveValue("eonmun.eth");
+  assert.deepEqual(await state(a, artist.account.address), savedTenant);
+  assert.equal(new URL(a.url()).search, "");
+  for (const href of await a
+    .locator("header nav a, .workspace-nav a")
+    .evaluateAll((links) => links.map((a) => a.getAttribute("href")!))) {
+    if (href.startsWith("/artist/") || href.startsWith("/gallery/"))
+      assert.equal(new URL(href, base).search, "");
+  }
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({

@@ -97,13 +97,17 @@ export default function Platform({ page }: { page: string }) {
     const demo = configRef.current?.localDemo;
     if (!demo) return;
     selectLocalWallet(demo.accounts[role]);
-    sessionStorage.setItem("local-demo-role", role);
+    localStorage.setItem("artwork-platform:local-role:" + demo.runId, role);
     restore(demo.accounts[role]);
   }
   const [account, setAccount] = useState<Address>();
   const accountRef = useRef<Address | undefined>(undefined);
   const [ctx, setContext] = useState<Context>(blank);
   const ctxRef = useRef(ctx);
+  const [tenant, setTenant] = useState<Context>(blank);
+  const tenantRef = useRef<Context>(blank);
+  const recordContext = useRef<Partial<Context>>({});
+  const restoring = useRef(0);
   const [names, setNames] = useState<{ name: string; allowed: boolean }[]>([]);
   const [finding, setFinding] = useState(false);
   const [nameError, setNameError] = useState("");
@@ -131,38 +135,87 @@ export default function Platform({ page }: { page: string }) {
     gallery ||
     ((page === "artwork" || page === "exhibition") &&
       same(account, galleryOwner));
-  function restore(a?: Address) {
+  function applyTenant(n: Context) {
+    tenantRef.current = n;
+    setTenant(n);
+    const view = { ...n, ...recordContext.current };
+    ctxRef.current = view;
+    setContext(view);
+  }
+  async function restore(a?: Address) {
+    const generation = ++restoring.current;
+    ++refreshGeneration.current;
     accountRef.current = a;
     setAccount(a);
     setChosen("");
     setNames([]);
     let n = { ...blank, ...configRef.current?.localDemo?.context };
     try {
-      if (a)
-        n = {
-          ...n,
-          ...JSON.parse(
-            localStorage.getItem(storageKey(a)) ||
-              (chainId === 11155111
-                ? localStorage.getItem("artwork-platform:v2:" + a.toLowerCase())
-                : null) ||
-              "{}",
-          ),
-        };
-    } catch {}
+      if (a) {
+        const saved = JSON.parse(
+          localStorage.getItem(storageKey(a)) ||
+            (chainId === 11155111
+              ? localStorage.getItem("artwork-platform:v2:" + a.toLowerCase())
+              : null) ||
+            "{}",
+        );
+        for (const k of Object.keys(blank) as (keyof Context)[])
+          if (typeof saved?.[k] === "string") n[k] = saved[k];
+      }
+    } catch {
+      /* Discard malformed browser storage. */
+    }
+    recordContext.current = {};
+    applyTenant(n);
+    // A shared record is a view, never the current managed tenant.
     const q = new URLSearchParams(location.search);
-    for (const k of Object.keys(blank) as (keyof Context)[])
-      if (q.has(k)) n[k] = q.get(k)!;
-    ctxRef.current = n;
-    setContext(n);
+    const view: Partial<Context> = {};
+    try {
+      const registry = q.get("registry");
+      const exhibition =
+        page === "exhibition"
+          ? registry
+          : page === "artist"
+            ? q.get("invitation")
+            : page === "artwork"
+              ? q.get("exhibition")
+              : null;
+      if (exhibition && isAddress(exhibition)) {
+        const [ns] = await read(exhibition, "GalleryRegistry", "getParent");
+        const [, label] = await read(ns, "ParticipantRegistry", "getParent");
+        view.galleryRegistry = exhibition;
+        view.galleryNamespace = ns;
+        view.galleryName = label + ".eth";
+      }
+      if (page === "artwork" && registry && isAddress(registry)) {
+        const [ns] = await read(registry, "ArtworkRegistry", "getParent");
+        const [, label] = await read(ns, "ParticipantRegistry", "getParent");
+        view.artwork = registry;
+        view.namespace = ns;
+        view.parent = label + ".eth";
+        view.settlement = "";
+        view.mandates = "";
+        const sale = q.get("sale");
+        if (sale && isAddress(sale)) {
+          if (!same(await read(sale, "SimpleSettlement", "artwork"), registry))
+            throw Error("Settlement does not match the shared artwork.");
+          view.settlement = sale;
+          view.mandates = await read(sale, "SimpleSettlement", "mandates");
+        }
+      }
+      if (generation !== restoring.current) return;
+      recordContext.current = view;
+      applyTenant(tenantRef.current);
+    } catch (e: any) {
+      if (generation === restoring.current)
+        setError(e.shortMessage || e.message);
+    }
   }
   function save(patch: Partial<Context>) {
-    const n = { ...ctxRef.current, ...patch };
-    ctxRef.current = n;
-    setContext(n);
+    const n = { ...tenantRef.current, ...patch };
+    applyTenant(n);
     if (accountRef.current) {
       localStorage.setItem(storageKey(accountRef.current), JSON.stringify(n));
-      // Keep resumable deployments for each independently managed name.
       for (const name of [n.parent, n.galleryName].filter(Boolean))
         localStorage.setItem(
           storageKey(accountRef.current) + ":" + name,
@@ -177,26 +230,46 @@ export default function Platform({ page }: { page: string }) {
     extra: Record<string, string> = {},
   ) {
     const n = { ...ctx, ...patch };
-    return (
-      path +
-      "?" +
-      new URLSearchParams({
-        ...Object.fromEntries(Object.entries(n).filter(([, v]) => v)),
-        ...extra,
-      }).toString()
-    );
+    const q = new URLSearchParams();
+    if (path === "/artwork/") {
+      if (n.artwork) q.set("registry", n.artwork);
+      if (n.settlement) q.set("sale", n.settlement);
+      if (extra.art) q.set("art", extra.art);
+      if (n.galleryRegistry) q.set("exhibition", n.galleryRegistry);
+    } else if (path === "/exhibition/") {
+      if (n.galleryRegistry) q.set("registry", n.galleryRegistry);
+      if (extra.show) q.set("show", extra.show);
+    }
+    return path + (q.size ? "?" + q.toString() : "");
   }
   function invite(path: string) {
-    const q = new URLSearchParams({
-      galleryName: ctx.galleryName,
-      galleryNamespace: ctx.galleryNamespace,
-      galleryRegistry: ctx.galleryRegistry,
-    });
+    if (path === "/exhibition/")
+      return url(path, {}, currentShow ? { show: String(currentShow.id) } : {});
+    const q = new URLSearchParams({ invitation: ctx.galleryRegistry });
     if (currentShow) q.set("show", String(currentShow.id));
     return path + "?" + q.toString();
   }
   useEffect(() => {
-    setActiveArt(new URLSearchParams(location.search).get("art") || "");
+    const route = new URL(location.href);
+    const q = route.searchParams;
+    if (page === "artwork" && q.has("art") && !q.has("registry")) {
+      if (q.has("artwork")) q.set("registry", q.get("artwork")!);
+      if (q.has("settlement")) q.set("sale", q.get("settlement")!);
+    }
+    if (
+      page === "exhibition" &&
+      q.has("show") &&
+      q.has("galleryRegistry") &&
+      !q.has("registry")
+    )
+      q.set("registry", q.get("galleryRegistry")!);
+    for (const k of Object.keys(blank)) q.delete(k);
+    window.history.replaceState(
+      null,
+      "",
+      route.pathname + route.search + route.hash,
+    );
+    setActiveArt(q.get("art") || "");
     setShowId(new URLSearchParams(location.search).get("show") || "");
     const p = (window as any).ethereum;
     let gone = false;
@@ -214,7 +287,10 @@ export default function Platform({ page }: { page: string }) {
         configRef.current = c;
         setConfig(c);
         if (c.localDemo) {
-          const role = sessionStorage.getItem("local-demo-role") || "artist";
+          const role =
+            localStorage.getItem(
+              "artwork-platform:local-role:" + c.localDemo.runId,
+            ) || "artist";
           chooseRole(role in c.localDemo.accounts ? role : "artist");
         } else if (p) {
           try {
@@ -275,8 +351,8 @@ export default function Platform({ page }: { page: string }) {
       if (!gone) {
         setNames(result);
         const parent = gallery
-          ? ctxRef.current.galleryName
-          : ctxRef.current.parent;
+          ? tenantRef.current.galleryName
+          : tenantRef.current.parent;
         if (result.some((n) => n.name === parent && n.allowed))
           setChosen(parent);
       }
@@ -317,9 +393,12 @@ export default function Platform({ page }: { page: string }) {
       throw Error("This wallet cannot manage that name.");
     setChosen(name);
     const current = managingGallery
-      ? ctxRef.current.galleryName
-      : ctxRef.current.parent;
-    if (current === name) return;
+      ? tenantRef.current.galleryName
+      : tenantRef.current.parent;
+    if (current === name) {
+      save({});
+      return;
+    }
     const previous = JSON.parse(
       localStorage.getItem(storageKey(account) + ":" + name) || "{}",
     );
@@ -604,7 +683,7 @@ export default function Platform({ page }: { page: string }) {
     if (!same(a, accountRef.current)) throw Error("Reconnect your wallet.");
     if (!(await access(chosen, a)))
       throw Error("This wallet cannot set the subregistry for that name.");
-    let n = { ...ctxRef.current };
+    let n = { ...tenantRef.current };
     const label = chosen.split(".")[0];
     const nsKey = gallery ? "galleryNamespace" : "namespace",
       childKey = gallery ? "galleryRegistry" : "artwork";
@@ -829,7 +908,8 @@ export default function Platform({ page }: { page: string }) {
     : isAddress(ctx.artwork) && isAddress(ctx.settlement);
   const managedParent = names.find(
     (n) =>
-      n.allowed && n.name === (managingGallery ? ctx.galleryName : ctx.parent),
+      n.allowed &&
+      n.name === (managingGallery ? tenant.galleryName : tenant.parent),
   )?.name;
   const managedName = managedParent
     ? (managingGallery ? "exhibitions." : "art.") + managedParent

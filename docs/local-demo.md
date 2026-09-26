@@ -31,7 +31,7 @@ The seed creates:
 6. Buy After the Rain directly from its artwork page. That sale has no gallery commission.
 7. Choose **Use gallery** and withdraw the earned commission.
 
-The role persists across refresh and navigation. Local contract context is isolated by chain and seed run ID. ENS discovery lists the seeded name owned by the current role and the UI verifies its permissions on-chain; this is not a general-purpose local ENS indexer. Collectors own no seeded ENS name.
+The role persists in localStorage across refresh, navigation and browser sessions, scoped to the seed run. Local contract context is isolated by chain and seed run ID. ENS discovery lists the seeded name owned by the current role and the UI verifies its permissions on-chain; this is not a general-purpose local ENS indexer. Collectors own no seeded ENS name.
 
 ## Fixtures and reset
 

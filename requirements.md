@@ -26,3 +26,5 @@ The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119
 
 20. Both settlement listing paths and all ERC-1155 ownership transfers MUST enforce the standard holding period. Exhibition loans MUST NOT transfer token ownership or bypass artwork terms.
 21. Live workspaces MUST show permission-checked managed namespaces, retain per-name setup state, and use route-specific Suspense skeletons and contract-data loading states.
+
+22. The current tenant MUST be restored from localStorage scoped by wallet, network and local demo instance. URL parameters MUST NOT select or overwrite the tenant. Shared artwork, exhibition and invitation links MAY identify records without changing the managed tenant.

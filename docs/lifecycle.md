@@ -25,7 +25,7 @@ Gallery contracts are independently deployed. The artist site filters exhibition
 
 Each participant signs their own deployments. A factory is deferred to keep deployment and ownership explicit in the MVP. Setup records partial progress in versioned browser storage; no old storefront address is automatically migrated.
 
-Shared URLs carry public contract addresses and gallery parent names. Both Workers run the same interface, with artist/gallery defaults. Either website can reconstruct genesis, mandates, exhibitions, listings and settlement receipts from public contract getters using its own RPC endpoint.
+The current tenant lives in wallet- and network-scoped localStorage, not URL parameters. Shared record URLs carry public registry/token references and, for purchases, a matching settlement reference. Parent names are read from contracts. Gallery invitations supply viewing/submission context without changing the managed tenant. Both Workers run the same interface, with artist/gallery defaults. Either website can reconstruct genesis, mandates, exhibitions, listings and settlement receipts from public contract getters using its own RPC endpoint.
 
 ## MVP evidence
 

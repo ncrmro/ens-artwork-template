@@ -25,7 +25,7 @@ Next.js App Router provides `/`, `/artist/`, `/gallery/`, `/artwork/`, `/exhibit
 
 Demo mode is isolated from wallet and chain code. Mock artwork creation, exhibition creation, submissions, acceptance and purchases persist in sessionStorage across refreshes and pages in the same tab. Reset restores the seed story. It is not onchain evidence.
 
-Wallet restoration calls `eth_accounts` silently on each page load. Account changes reload that account's saved deployment context; keys are never stored. Live contracts and demo data use separate storage. Public artwork and invitation URLs carry contract references; the deployment-address/export panel has been removed.
+Wallet restoration calls `eth_accounts` silently on each page load. The current artist/gallery tenant is stored in localStorage, scoped by wallet, chain and local seed run. Account changes reload that account's saved tenant; keys are never stored. Workspace navigation uses clean URLs. Shared record and invitation links never replace the managed tenant. Live contracts and demo data use separate storage. Public artwork and invitation URLs carry contract references; the deployment-address/export panel has been removed.
 
 ## Run and verify
 
