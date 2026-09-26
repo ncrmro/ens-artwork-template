@@ -1,4 +1,5 @@
 "use client";
+import { exhibitionArtists } from "./named-catalogue";
 import { artworkLabel } from "./artwork-label";
 import { useEffect, useRef, useState } from "react";
 import { isAddress, zeroAddress, type Address } from "viem";
@@ -176,12 +177,12 @@ export default function Browse({ kind }: { kind: string }) {
                     "acceptedSubmissions",
                     [token],
                   );
-                  if (accepted.length) {
+                  for (const submissionId of accepted) {
                     const submission = await read(
                       gallery,
                       "GalleryRegistry",
                       "submissions",
-                      [accepted[0]],
+                      [submissionId],
                     );
                     const mandate = await read(
                       submission[1],
@@ -194,11 +195,33 @@ export default function Browse({ kind }: { kind: string }) {
                       "MandateRegistry",
                       "artwork",
                     );
-                    image = (
-                      await read(registry, "ArtworkRegistry", "genesis", [
-                        mandate.tokenId,
-                      ])
-                    ).imageURI;
+                    const genesis = await read(
+                      registry,
+                      "ArtworkRegistry",
+                      "genesis",
+                      [mandate.tokenId],
+                    );
+                    if (!image) image = genesis.imageURI;
+                    const preferred =
+                      exhibitionArtists[
+                        name.split(".")[0] as keyof typeof exhibitionArtists
+                      ];
+                    if (preferred) {
+                      const [artistNamespace] = await read(
+                        registry,
+                        "ArtworkRegistry",
+                        "getParent",
+                      );
+                      const [, artistLabel] = await read(
+                        artistNamespace,
+                        "ParticipantRegistry",
+                        "getParent",
+                      );
+                      if (artistLabel === preferred) {
+                        image = genesis.imageURI;
+                        break;
+                      }
+                    } else break;
                   }
                 }
               } catch {

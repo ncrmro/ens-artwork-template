@@ -7,7 +7,11 @@ import { adminClient, adminIdentity, sameAddress } from "./admin-chain";
 import { configureChain, wallet, contracts, type Config } from "./chain";
 import { runAdminSeed, emptyOwnedParticipant } from "./admin-seed";
 import baseCatalogue from "./demo-catalogue.json";
-import { namedCatalogue, knownNames } from "./named-catalogue";
+import {
+  namedCatalogue,
+  knownNames,
+  groupExhibitions,
+} from "./named-catalogue";
 import imageSources from "./artwork-sources.json";
 import namedAssets from "./named-assets.json";
 import { assetsForCatalogue } from "./named-assets";
@@ -172,7 +176,8 @@ export default function Admin() {
           localStorage.getItem(storageKey(c, accounts[0])) || "{}",
         );
         if (saved.parents) setParents(saved.parents);
-        if (saved.catalogue) setCatalogue(withEonmunArtworks(saved.catalogue));
+        if (saved.catalogue)
+          setCatalogue(groupExhibitions(withEonmunArtworks(saved.catalogue)));
         if (saved.allNamesMode) setAllNamesMode(true);
         setLocked(!!saved.bootstrap);
         setComplete(!!saved.index);

@@ -20,6 +20,11 @@ const profiles = {
   mfah: { kind: "gallery", name: "MFAH · testnet demo" },
   uffizi: { kind: "gallery", name: "Uffizi · testnet demo" },
 };
+export const exhibitionArtists = {
+  mfah: "eonmun",
+  uffizi: "davinci",
+  louvre: "vangogh",
+};
 export const knownNames = Object.keys(profiles).map((n) => n + ".eth");
 export function namedCatalogue(names, sources) {
   const participants = names
@@ -94,7 +99,7 @@ export function namedCatalogue(names, sources) {
         w.imageSource,
     },
   ]);
-  return withEonmunArtworks({
+  const catalogue = withEonmunArtworks({
     participants,
     works,
     shows,
@@ -102,4 +107,23 @@ export function namedCatalogue(names, sources) {
     submissions: [],
     terms: {},
   });
+  return groupExhibitions(catalogue);
+}
+export function groupExhibitions(catalogue) {
+  const shows = catalogue.shows.map((show) => {
+    const galleryId = show.id.replace("-open-collection", "");
+    const artistId = exhibitionArtists[galleryId];
+    if (!artistId) return show;
+    return {
+      ...show,
+      works: catalogue.works
+        .filter((work) =>
+          artistId === "eonmun"
+            ? work.id.startsWith("eonmun-original-")
+            : work.id.startsWith(artistId + "-"),
+        )
+        .map((work) => work.id),
+    };
+  });
+  return { ...catalogue, shows };
 }
