@@ -51,3 +51,11 @@ The named demo catalogue and staged pages share images and provenance from `src/
 Source artist/date/license/URL are retained in fixture metadata. The demo edition's creation date is 2026; it does not pretend that today's NFT was minted in 1503 or 1887. Real image bytes and manifests are stored as raw SHA-256 CIDv1 files; `npm run seed:assets:named` regenerates them. The website serves the exact bundled bytes for these CIDs, so previews work before public pinning.
 
 For actual IPFS availability, run `IPFS_API_URL=http://127.0.0.1:5001 npm run seed:pin` against your own Kubo node. The script verifies every CID before import, checks the returned CID and pins every block. Keep the node online or replicate its pins to a pinning service. No public pinning service is configured in this repository; a content hash alone is not evidence of network availability.
+
+## Published IPFS assets
+
+The catalogue's 26 referenced content blocks, including all five imported EON MUN images and their metadata, were uploaded to the Filebase IPFS bucket `ncrmro-eonmun-artwork-ipfs` on 2026-09-26. CAR imports preserve the raw CIDs already used by the contracts. Filebase reported every block as pinned. No contract changes or remints are needed.
+
+Repeat publishing with `scripts/seed/pin-filebase.mjs`. Configure AWS credentials outside the repository, set `FILEBASE_BUCKET`, and set `IPFS_BIN` and `IPFS_PATH` to an initialized Kubo repository. The script verifies input hashes, skips existing uploads, checks returned CIDs, and writes `output/filebase-pins.json`. Use Filebase's IPFS S3 endpoint `https://s3.filebase.com`, rather than its general object-storage endpoint.
+
+The public gateway is `https://ipfs.filebase.io/ipfs/<CID>`. Cloudflare's bundled copies remain a fallback. Pin persistence depends on maintaining the Filebase account and its pins.
