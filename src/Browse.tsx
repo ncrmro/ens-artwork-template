@@ -1,0 +1,265 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { isAddress, zeroAddress, type Address } from "viem";
+import SiteHeader from "./SiteHeader";
+import { CollectionSkeleton } from "./PageSkeleton";
+import {
+  client,
+  configureChain,
+  contracts,
+  parentAbi,
+  validateParent,
+  type Config,
+} from "./chain";
+type Entry = {
+  type: "art" | "gallery" | "exhibition";
+  name: string;
+  title: string;
+  image?: string;
+  href: string;
+  detail: string;
+};
+export default function Browse({ kind }: { kind: string }) {
+  const [config, setConfig] = useState<Config>();
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const request = useRef(0);
+  const read = (
+    address: string,
+    contract: string,
+    functionName: string,
+    args: unknown[] = [],
+  ): Promise<any> =>
+    client.readContract({
+      address: address as Address,
+      abi: contracts[contract].abi,
+      functionName,
+      args,
+    });
+  async function load(c: Config, names: string[]) {
+    const id = ++request.current;
+    setLoading(true);
+    setError("");
+    try {
+      const rows: Entry[] = [];
+      for (const parent of [...new Set(names)]) {
+        const name = validateParent(parent);
+        const ns = await client.readContract({
+          address: c.ens.ETHRegistry,
+          abi: parentAbi,
+          functionName: "getSubregistry",
+          args: [name.split(".")[0]],
+        });
+        if (ns === zeroAddress) continue;
+        const art = await read(ns, "ParticipantRegistry", "getSubregistry", [
+          "art",
+        ]);
+        const gallery = await read(
+          ns,
+          "ParticipantRegistry",
+          "getSubregistry",
+          ["exhibitions"],
+        );
+        if (isAddress(art) && art !== zeroAddress) {
+          const count = Number(
+            await read(art, "ArtworkRegistry", "recordCount"),
+          );
+          for (let i = 0; i < Math.min(count, 100); i++) {
+            const token = await read(art, "ArtworkRegistry", "recordId", [
+              BigInt(i),
+            ]);
+            const g = await read(art, "ArtworkRegistry", "genesis", [token]);
+            const q = new URLSearchParams({
+              registry: art,
+              art: String(token),
+            });
+            // Known sale references are optional; never borrow the visitor's managed tenant.
+            const local = c.localDemo?.context;
+            if (
+              local?.artwork?.toLowerCase() === art.toLowerCase() &&
+              local.settlement
+            )
+              q.set("sale", local.settlement);
+            else if (
+              c.lifecycle.artwork?.toLowerCase() === art.toLowerCase() &&
+              c.lifecycle.settlement
+            )
+              q.set("sale", c.lifecycle.settlement);
+            rows.push({
+              type: "art",
+              name: g.label + ".art." + name,
+              title: g.title,
+              image: g.imageURI,
+              href: "/artwork/?" + q,
+              detail: g.medium + " · " + g.year,
+            });
+          }
+        }
+        if (isAddress(gallery) && gallery !== zeroAddress) {
+          const count = Number(
+            await read(gallery, "GalleryRegistry", "recordCount"),
+          );
+          rows.push({
+            type: "gallery",
+            name: "exhibitions." + name,
+            title: name,
+            href: "/browse/exhibitions/?name=" + encodeURIComponent(name),
+            detail: count + " exhibitions",
+          });
+          for (let i = 0; i < Math.min(count, 100); i++) {
+            const token = await read(gallery, "GalleryRegistry", "recordId", [
+              BigInt(i),
+            ]);
+            const show = await read(gallery, "GalleryRegistry", "exhibition", [
+              token,
+            ]);
+            rows.push({
+              type: "exhibition",
+              name: show.label + ".exhibitions." + name,
+              title: show.title,
+              href:
+                "/exhibition/?" +
+                new URLSearchParams({ registry: gallery, show: String(token) }),
+              detail: "Presented by " + name,
+            });
+          }
+        }
+      }
+      if (id === request.current) {
+        setEntries(rows);
+        setSearched(names.length > 0);
+      }
+    } catch (e: any) {
+      if (id === request.current) setError(e.shortMessage || e.message);
+    } finally {
+      if (id === request.current) setLoading(false);
+    }
+  }
+  useEffect(() => {
+    let gone = false;
+    fetch("/api/config")
+      .then(async (r) => {
+        if (!r.ok) throw Error("Configuration unavailable");
+        return (await r.json()) as Config;
+      })
+      .then((c) => {
+        if (gone) return;
+        configureChain(c);
+        setConfig(c);
+        const name = new URLSearchParams(location.search).get("name");
+        const local = c.localDemo?.context;
+        void load(
+          c,
+          name
+            ? [name]
+            : local
+              ? [local.parent, local.galleryName].filter(Boolean)
+              : [],
+        );
+      })
+      .catch((e) => {
+        if (!gone) {
+          setError(e.message);
+          setLoading(false);
+        }
+      });
+    return () => {
+      gone = true;
+      ++request.current;
+    };
+  }, []);
+  const type =
+    kind === "galleries"
+      ? "gallery"
+      : kind === "exhibitions"
+        ? "exhibition"
+        : "art";
+  const visible = entries.filter((e) => e.type === type);
+  return (
+    <>
+      <SiteHeader />
+      <main className="page">
+        <p className="eyebrow">DISCOVER · NO WALLET REQUIRED</p>
+        <h1>
+          {kind === "galleries"
+            ? "Galleries"
+            : kind === "exhibitions"
+              ? "Exhibitions"
+              : "Explore artwork"}
+        </h1>
+        <p className="intro">
+          Explore an artist or gallery by their ENS name. View original artwork
+          records and exhibitions without entering a management workspace.
+        </p>
+        <nav className="browse-tabs" aria-label="Browse collections">
+          {[
+            ["art", "Art"],
+            ["galleries", "Galleries"],
+            ["exhibitions", "Exhibitions"],
+          ].map(([id, label]) => (
+            <a
+              key={id}
+              href={"/browse/" + id + "/"}
+              aria-current={kind === id ? "page" : undefined}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+        <form
+          className="panel browse-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (config)
+              void load(config, [
+                String(new FormData(e.currentTarget).get("name")),
+              ]);
+          }}
+        >
+          <label>
+            Artist or gallery ENS name
+            <input name="name" required placeholder="artist.eth" />
+          </label>
+          <button className="button" disabled={!config || loading}>
+            Explore name ↗
+          </button>
+        </form>
+        {error && <p role="alert">{error}</p>}
+        {loading ? (
+          <CollectionSkeleton />
+        ) : (
+          <div className="catalogue">
+            {visible.map((e) => (
+              <article className="panel art-card" key={e.name}>
+                {e.image?.startsWith("ipfs://") && (
+                  <img
+                    src={
+                      (config?.ipfsGateway || "https://ipfs.io/ipfs/") +
+                      e.image.slice(7)
+                    }
+                    alt={e.title}
+                  />
+                )}
+                <p className="eyebrow">{e.name}</p>
+                <h2>{e.title}</h2>
+                <p>{e.detail}</p>
+                <a className="button" href={e.href}>
+                  {type === "gallery" ? "View exhibitions" : "View " + type} ↗
+                </a>
+              </article>
+            ))}
+          </div>
+        )}
+        {!loading && !visible.length && (
+          <p>
+            {searched
+              ? "No matching records in this namespace."
+              : "Enter an ENS name to explore its published records. This is a name lookup, not a complete index of every registry."}
+          </p>
+        )}
+      </main>
+    </>
+  );
+}

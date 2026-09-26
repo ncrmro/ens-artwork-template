@@ -1,4 +1,5 @@
 "use client";
+import SiteHeader from "./SiteHeader";
 import PageSkeleton, { CollectionSkeleton } from "./PageSkeleton";
 import defaults from "./demo-defaults.json";
 import React, { useEffect, useRef, useState } from "react";
@@ -387,12 +388,12 @@ export default function Platform({ page }: { page: string }) {
       args: [resource, 1n << 20n, a],
     });
   }
-  async function chooseNamespace(name: string) {
+  async function chooseNamespace(name: string, asGallery = managingGallery) {
     if (!account || !config || !name) return;
     if (!(await access(name, account)))
       throw Error("This wallet cannot manage that name.");
     setChosen(name);
-    const current = managingGallery
+    const current = asGallery
       ? tenantRef.current.galleryName
       : tenantRef.current.parent;
     if (current === name) {
@@ -412,7 +413,7 @@ export default function Platform({ page }: { page: string }) {
     if (namespace !== zeroAddress) {
       try {
         child = await read(namespace, "ParticipantRegistry", "getSubregistry", [
-          managingGallery ? "exhibitions" : "art",
+          asGallery ? "exhibitions" : "art",
         ]);
       } catch {
         /* setup checks compatibility */
@@ -420,7 +421,7 @@ export default function Platform({ page }: { page: string }) {
     }
     if (child === zeroAddress) child = "";
     save(
-      managingGallery
+      asGallery
         ? {
             galleryName: name,
             galleryNamespace: namespace === zeroAddress ? "" : namespace,
@@ -435,6 +436,16 @@ export default function Platform({ page }: { page: string }) {
               previous.artwork === child ? previous.settlement || "" : "",
           },
     );
+  }
+  async function switchWorkspace(value: string) {
+    if (!value) return;
+    const [mode, name] = value.split(":");
+    if (mode !== "artist" && mode !== "gallery") return;
+    await chooseNamespace(name, mode === "gallery");
+    if (accountRef.current)
+      localStorage.setItem(storageKey(accountRef.current) + ":mode", mode);
+    localStorage.setItem("artwork-platform:last-workspace", mode);
+    location.assign("/" + mode + "/");
   }
   async function connect() {
     const { account: a } = await wallet();
@@ -911,37 +922,24 @@ export default function Platform({ page }: { page: string }) {
       n.allowed &&
       n.name === (managingGallery ? tenant.galleryName : tenant.parent),
   )?.name;
-  const managedName = managedParent
-    ? (managingGallery ? "exhibitions." : "art.") + managedParent
-    : "";
   if (!config && !error) return <PageSkeleton page={page} />;
   return (
     <>
-      <header>
-        <a className="brand" href="/">
-          <span className="brand-symbol">◈</span>
-          <span>
-            ARTWORK COMMONS<small>ARTISTS. GALLERIES. A SHARED HISTORY.</small>
-          </span>
-        </a>
-        <nav>
-          <a href={url("/artist/")}>Artist</a>
-          <a href={url("/gallery/")}>Gallery</a>
-          <a href="/demo/artist/">Try demo</a>
-          <a href="/docs/">How it works</a>
-        </nav>
+      <SiteHeader>
         <div className="wallet-context">
           {account && (
             <label className="namespace-control">
-              <span>
-                Managing {managingGallery ? "gallery" : "artist"} namespace
-              </span>
+              <span>Manage workspace</span>
               <select
                 aria-label="Managed namespace"
                 disabled={busy || finding}
-                value={managedParent || ""}
+                value={
+                  managedParent
+                    ? (managingGallery ? "gallery:" : "artist:") + managedParent
+                    : ""
+                }
                 onChange={(e) =>
-                  void act(() => chooseNamespace(e.target.value))
+                  void act(() => switchWorkspace(e.target.value))
                 }
               >
                 <option value="">
@@ -951,12 +949,17 @@ export default function Platform({ page }: { page: string }) {
                 </option>
                 {names
                   .filter((n) => n.allowed)
-                  .map((n) => (
-                    <option key={n.name} value={n.name}>
-                      {managingGallery ? "exhibitions." : "art."}
-                      {n.name}
-                    </option>
-                  ))}
+                  .flatMap((n) => [
+                    <option key={"artist:" + n.name} value={"artist:" + n.name}>
+                      art.{n.name} · Artist
+                    </option>,
+                    <option
+                      key={"gallery:" + n.name}
+                      value={"gallery:" + n.name}
+                    >
+                      exhibitions.{n.name} · Gallery
+                    </option>,
+                  ])}
               </select>
             </label>
           )}
@@ -969,7 +972,7 @@ export default function Platform({ page }: { page: string }) {
             {account ? short(account) : "Connect wallet ↗"}
           </button>
         </div>
-      </header>
+      </SiteHeader>
       <div className="network">
         <span>
           {config?.localDemo
@@ -1037,26 +1040,6 @@ export default function Platform({ page }: { page: string }) {
           </section>
         )}
 
-        <nav className="workspace-nav" aria-label="Workspace navigation">
-          <a
-            href={url("/artist/")}
-            aria-current={page === "artist" ? "page" : undefined}
-          >
-            Artist studio
-          </a>
-          <a
-            href={url("/gallery/")}
-            aria-current={page === "gallery" ? "page" : undefined}
-          >
-            Gallery programme
-          </a>
-          <span>
-            {managedName ||
-              (account
-                ? "Viewing · choose a namespace to manage"
-                : "Connect a wallet to manage your work")}
-          </span>
-        </nav>
         {(error || message || busy) && (
           <div
             className={"notice " + (error ? "error" : "")}

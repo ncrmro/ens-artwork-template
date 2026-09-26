@@ -1272,22 +1272,6 @@ main.page > .page-heading {
   padding: 8px;
   font-size: 13px;
 }
-.workspace-nav {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line, #d8d6ce);
-  margin-bottom: 30px;
-}
-.workspace-nav [aria-current="page"] {
-  font-weight: 700;
-  text-decoration: underline;
-}
-.workspace-nav span {
-  margin-left: auto;
-  font-size: 13px;
-}
 .workspace-gallery {
   border-top: 5px solid #536962;
 }
@@ -1310,11 +1294,42 @@ main.page > .page-heading {
   .namespace-control {
     flex: 1;
   }
-  .workspace-nav span {
-    margin-left: 0;
-    width: 100%;
-  }
   .skeleton-heading {
     height: 70px;
   }
+}
+
+.site-header {
+  padding: 18px 4vw;
+  gap: 20px;
+}
+.site-header .wallet-context {
+  background: transparent;
+  padding: 0;
+}
+.site-header .namespace-control {
+  min-width: 230px;
+}
+.browse-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+  margin-bottom: 28px;
+}
+.browse-tabs [aria-current="page"] {
+  font-weight: 700;
+}
+.browse-search {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.browse-search label {
+  flex: 1;
+  min-width: 220px;
+}
+.browse-search input {
+  width: 100%;
 }

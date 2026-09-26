@@ -305,7 +305,9 @@ try {
       gc.galleryRegistry +
       "&galleryName=attacker.eth",
   );
-  await expect(a.getByLabel("Managed namespace")).toHaveValue("eonmun.eth");
+  await expect(a.getByLabel("Managed namespace")).toHaveValue(
+    "artist:eonmun.eth",
+  );
   assert.deepEqual(await state(a, artist.account.address), savedTenant);
   assert.equal(new URL(a.url()).search, "");
   for (const href of await a
