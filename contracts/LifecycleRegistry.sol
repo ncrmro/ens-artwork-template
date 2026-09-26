@@ -50,6 +50,13 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
     mapping(uint256 => Presentation) private presentations;
     mapping(uint256 => uint256) private epochs;
     mapping(uint256 => uint64) public issuedAt;
+    mapping(uint256 => uint64) private creationDates;
+    struct HistoricalInput { bytes32 referenceId; uint8 kind; uint64 occurredAt; string title; string detail; }
+    struct HistoricalRecord { uint8 kind; uint64 occurredAt; uint64 recordedAt; address recordedBy; string title; string detail; }
+    mapping(uint256 => HistoricalRecord[]) private history;
+    mapping(uint256 => mapping(bytes32 => bool)) private historyReferences;
+    event HistoricalRecordAdded(uint256 indexed tokenId,uint256 indexed index,uint8 kind,uint64 occurredAt,address indexed recordedBy);
+    event CreationDateRecorded(uint256 indexed tokenId,uint64 occurredAt,uint64 recordedAt);
     uint256[] private ids;
     event Issued(uint256 indexed id, address indexed artist, string label, string manifestURI);
     event PresentationUpdated(uint256 indexed id, address indexed owner, string publicLocation, string ownerWebsite);
@@ -60,7 +67,11 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
         artworkResolver = new ArtResolver(); _uriRenderer = IRegistryURIRenderer(address(this));
     }
     function key(uint256 id) public pure returns(uint256) { return id & ~uint256(type(uint32).max); }
-    function issue(Genesis calldata g) external returns(uint256 tokenId) {
+    function issue(Genesis calldata g) external returns(uint256 tokenId) { return _issue(g,uint64(block.timestamp)); }
+    function issueDated(Genesis calldata g,uint64 createdAt) external returns(uint256 tokenId) { return _issue(g,createdAt); }
+    function _issue(Genesis calldata g,uint64 createdAt) private returns(uint256 tokenId) {
+        require(createdAt>0 && createdAt<=block.timestamp,"Creation date must be past or present");
+        require(g.year==_year(createdAt),"Year must match creation date");
         require(msg.sender == artist && g.artist == artist, "Only original artist");
         bytes memory l = bytes(g.label);
         require(l.length > 0 && l.length <= 63, "Invalid label");
@@ -76,7 +87,35 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
         records[key(id)] = g;
         artworkResolver.publish(keccak256(abi.encodePacked(namespaceNode, bytes32(id))), g.contenthash, g.manifestURI);
         tokenId = _register(g.label, artist, IRegistry(address(0)), address(artworkResolver), RegistryRolesLib.ROLE_CAN_TRANSFER_ADMIN, type(uint64).max, false);
-        issuedAt[key(id)]=uint64(block.timestamp); ids.push(id); emit Issued(id, artist, g.label, g.manifestURI);
+        issuedAt[key(id)]=uint64(block.timestamp); creationDates[key(id)]=createdAt;
+        ids.push(id); emit Issued(id, artist, g.label, g.manifestURI);
+        emit CreationDateRecorded(id,createdAt,uint64(block.timestamp));
+    }
+    function createdAt(uint256 id) external view returns(uint64) { return creationDates[key(id)]; }
+    function historyCount(uint256 id) external view returns(uint256) { return history[key(id)].length; }
+    function historicalRecord(uint256 id,uint256 index) external view returns(HistoricalRecord memory) { return history[key(id)][index]; }
+    /// Historical statements are attributed claims, never settlement or ownership updates.
+    function recordHistory(uint256 id,HistoricalInput calldata h) external {
+        uint256 k=key(id);
+        require(msg.sender==artist || msg.sender==getOwner(id),"Only artist or current owner");
+        require(creationDates[k]!=0 && h.occurredAt>=creationDates[k] && h.occurredAt<=block.timestamp,"History date outside artwork lifetime");
+        require(h.kind>=1 && h.kind<=3,"Use creation, exhibition or purchase");
+        require(h.referenceId!=bytes32(0) && !historyReferences[k][h.referenceId],"Duplicate or empty reference");
+        require(bytes(h.title).length>0 && bytes(h.title).length<=128 && bytes(h.detail).length<=1024,"Invalid history text");
+        historyReferences[k][h.referenceId]=true;
+        HistoricalRecord storage r=history[k].push();
+        r.kind=h.kind; r.occurredAt=h.occurredAt; r.recordedAt=uint64(block.timestamp); r.recordedBy=msg.sender;
+        r.title=h.title; r.detail=h.detail;
+        emit HistoricalRecordAdded(id,history[k].length-1,h.kind,h.occurredAt,msg.sender);
+    }
+    function _year(uint64 timestamp) private pure returns(uint256 year) {
+        // Gregorian civil calendar, days since Unix epoch.
+        uint256 z=uint256(timestamp)/86400+719468;
+        uint256 era=z/146097; uint256 doe=z-era*146097;
+        uint256 yoe=(doe-doe/1460+doe/36524-doe/146096)/365;
+        year=yoe+era*400;
+        uint256 doy=doe-(365*yoe+yoe/4-yoe/100);
+        if((5*doy+2)/153>=10) ++year;
     }
     function _ipfs(string memory uri) private pure returns(bool) { bytes memory b=bytes(uri); return b.length>7 && b.length<=256 && bytes7(b)==bytes7("ipfs://"); }
     function register(string memory,address,IRegistry,address,uint256,uint64) public pure override returns(uint256) { revert("Use issue"); }

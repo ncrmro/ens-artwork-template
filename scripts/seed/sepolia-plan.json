@@ -1,0 +1,27 @@
+{
+  "chainId": 11155111,
+  "participants": [
+    {
+      "id": "eonmun",
+      "parent": "eonmun.eth",
+      "wallet": ""
+    },
+    {
+      "id": "mika",
+      "parent": "mika-sato.eth",
+      "wallet": ""
+    },
+    {
+      "id": "atelier",
+      "parent": "atelier-gallery.eth",
+      "wallet": ""
+    },
+    {
+      "id": "harbour",
+      "parent": "harbour-gallery.eth",
+      "wallet": ""
+    }
+  ],
+  "journal": ".local/sepolia-seed.json",
+  "indexOutput": "src/browse-index.json"
+}

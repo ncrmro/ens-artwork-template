@@ -1,0 +1,35 @@
+{
+  "works": {
+    "blue-mountain": {
+      "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+      "manifest": "ipfs://bafkreib4fg3mjvqx5oqtlpifpaxkwuyigq75n4tjz2sd23n6uwg7baohse"
+    },
+    "quiet-tide": {
+      "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+      "manifest": "ipfs://bafkreibyiez4pftxakc2ymkmp274bksb2zrofegz5zusgoo4dkpnlhlcku"
+    },
+    "after-the-rain": {
+      "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+      "manifest": "ipfs://bafkreigqqgwkjiizykn4hlfrt64a3zlawsbzy3waebeuf5bmanxrk2wxum"
+    },
+    "folded-light": {
+      "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+      "manifest": "ipfs://bafkreibvyckcjunmdyrsrmjaiwrbwxr3wdtkqhhg3mm2lzmdcuxv7dlsgm"
+    },
+    "red-earth": {
+      "image": "ipfs://bafkreigoht6f3rtp22switls7vfsg6oisptodqtcoik2db6b5w5hg2bmam",
+      "manifest": "ipfs://bafkreif5orj2opekya757smb7yfyuqxfoqxn43kuifa3tn46ue2nsdx25q"
+    }
+  },
+  "shows": {
+    "tokyo": {
+      "manifest": "ipfs://bafkreidnu2xjlyzjxl5w5mmbmezq4rv2vmvgohcvpiih2l3joyohbcavve"
+    },
+    "harbour": {
+      "manifest": "ipfs://bafkreia5qahdqpgscdptdgjsn3qujy56cpmyrwvtkxtp3sor23fqwonbma"
+    },
+    "common-ground": {
+      "manifest": "ipfs://bafkreiga7skkwc4xopboc7l7lppq7dipr2zhgabhgglirvlivk3nl2dtmu"
+    }
+  }
+}

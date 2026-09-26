@@ -890,3 +890,162 @@ test("canonical terms reject customization and enforce holds across gallery, dir
       unlock,
   );
 });
+
+test("historical dates are immutable attributed statements, reject the future, and cannot change ownership or sale holds", async () => {
+  const f = await fixture();
+  const {
+    artist,
+    gallery,
+    bob,
+    artwork,
+    galleryRegistry,
+    read,
+    write,
+    genesis,
+    pc,
+  } = f;
+  const now = (await pc.getBlock()).timestamp;
+  const past = now - 86400n;
+  const g = { ...genesis, label: "historical-work" };
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "issueDated", [
+      { ...g, year: 9999 },
+      past,
+    ]),
+  );
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "issueDated", [g, now + 86400n]),
+  );
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "issueDated", [g, 0n]),
+  );
+  await assert.rejects(() =>
+    write(bob, artwork, "ArtworkRegistry", "issueDated", [g, past]),
+  );
+  await write(artist, artwork, "ArtworkRegistry", "issueDated", [g, past]);
+  const id = BigInt(keccak256(stringToHex(g.label)));
+  assert.equal(await read(artwork, "ArtworkRegistry", "createdAt", [id]), past);
+  const token = await read(artwork, "ArtworkRegistry", "getTokenId", [id]);
+  await write(artist, artwork, "ArtworkRegistry", "safeTransferFrom", [
+    artist.account.address,
+    bob.account.address,
+    token,
+    1n,
+    "0x",
+  ]);
+  const unlock = await read(artwork, "ArtworkRegistry", "resaleAllowedAt", [
+    id,
+  ]);
+  const report = {
+    referenceId: keccak256(stringToHex("purchase-record")),
+    kind: 3,
+    occurredAt: past + 10n,
+    title: "Historical purchase",
+    detail: "Reported prior physical artwork sale",
+  };
+  await assert.rejects(() =>
+    write(gallery, artwork, "ArtworkRegistry", "recordHistory", [id, report]),
+  );
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "recordHistory", [
+      id,
+      { ...report, occurredAt: now + 86400n },
+    ]),
+  );
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "recordHistory", [
+      id,
+      { ...report, occurredAt: past - 1n },
+    ]),
+  );
+  await write(artist, artwork, "ArtworkRegistry", "recordHistory", [
+    id,
+    report,
+  ]);
+  await assert.rejects(() =>
+    write(artist, artwork, "ArtworkRegistry", "recordHistory", [id, report]),
+  );
+  const h = await read(artwork, "ArtworkRegistry", "historicalRecord", [
+    id,
+    0n,
+  ]);
+  assert.equal(h.occurredAt, past + 10n);
+  assert.ok(h.recordedAt > h.occurredAt);
+  assert.equal(h.recordedBy.toLowerCase(), artist.account.address);
+  assert.equal(
+    await read(artwork, "ArtworkRegistry", "resaleAllowedAt", [id]),
+    unlock,
+  );
+  assert.equal(
+    (await read(artwork, "ArtworkRegistry", "getOwner", [id])).toLowerCase(),
+    bob.account.address,
+  );
+  assert.equal(
+    await read(artwork, "ArtworkRegistry", "ownershipEpoch", [id]),
+    1n,
+  );
+  await assert.rejects(() =>
+    write(artist, galleryRegistry, "GalleryRegistry", "recordEstablishment", [
+      past,
+    ]),
+  );
+  await assert.rejects(() =>
+    write(gallery, galleryRegistry, "GalleryRegistry", "recordEstablishment", [
+      now + 86400n,
+    ]),
+  );
+  await write(
+    gallery,
+    galleryRegistry,
+    "GalleryRegistry",
+    "recordEstablishment",
+    [past],
+  );
+  await assert.rejects(() =>
+    write(gallery, galleryRegistry, "GalleryRegistry", "recordEstablishment", [
+      past - 1n,
+    ]),
+  );
+  const show = {
+    label: "historical-show",
+    title: "Historical exhibition",
+    manifestURI: ipfs,
+    contenthash: hash,
+    custodyStatement: "Gallery-reported historical exhibition",
+  };
+  await assert.rejects(() =>
+    write(
+      gallery,
+      galleryRegistry,
+      "GalleryRegistry",
+      "createExhibitionDated",
+      [show, now + 86400n],
+    ),
+  );
+  await assert.rejects(() =>
+    write(
+      gallery,
+      galleryRegistry,
+      "GalleryRegistry",
+      "createExhibitionDated",
+      [show, past - 1n],
+    ),
+  );
+  await write(
+    gallery,
+    galleryRegistry,
+    "GalleryRegistry",
+    "createExhibitionDated",
+    [show, past + 1n],
+  );
+  const showId = BigInt(keccak256(stringToHex(show.label)));
+  assert.equal(
+    await read(galleryRegistry, "GalleryRegistry", "occurredAt", [showId]),
+    past + 1n,
+  );
+  assert.ok(
+    (await read(galleryRegistry, "GalleryRegistry", "exhibition", [showId]))
+      .recordedAt >
+      past + 1n,
+  );
+});

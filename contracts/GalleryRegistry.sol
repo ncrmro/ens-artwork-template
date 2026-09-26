@@ -13,6 +13,12 @@ contract GalleryRegistry is PermissionedRegistry, IRegistryURIRenderer {
     struct Exhibition { string label; string title; string manifestURI; address artwork; uint256 artworkId; address mandates; uint256 mandateId; address issuer; uint64 recordedAt; string custodyStatement; }
     struct Publication { string label; string title; string manifestURI; bytes contenthash; string custodyStatement; }
     address public immutable gallery;
+    uint64 public immutable deployedAt;
+    uint64 public establishedAt;
+    bool private establishmentRecorded;
+    mapping(uint256=>uint64) private exhibitionDates;
+    event GalleryEstablishmentRecorded(uint64 occurredAt,uint64 recordedAt,address indexed recordedBy);
+    event ExhibitionDateRecorded(uint256 indexed id,uint64 occurredAt,uint64 recordedAt);
     bytes32 public immutable namespaceNode;
     ArtResolver public immutable exhibitionResolver;
     mapping(uint256=>Exhibition) private exhibitions;
@@ -20,7 +26,7 @@ contract GalleryRegistry is PermissionedRegistry, IRegistryURIRenderer {
     event ExhibitionPublished(uint256 indexed id,address indexed artwork,uint256 indexed artworkId,uint256 mandateId);
     constructor(ILabelStore store,IRegistry parent,bytes32 node,address gallery_) PermissionedRegistry(store,gallery_,0) {
         require(gallery_!=address(0),"Gallery required");
-        gallery=gallery_; namespaceNode=node; _parentRegistry=parent; _childLabel="exhibitions";
+        gallery=gallery_; deployedAt=uint64(block.timestamp); establishedAt=uint64(block.timestamp); namespaceNode=node; _parentRegistry=parent; _childLabel="exhibitions";
         exhibitionResolver=new ArtResolver(); _uriRenderer=IRegistryURIRenderer(address(this));
     }
     function publish(Publication calldata p,MandateRegistry mandates,uint256 mandateId) external {
@@ -37,6 +43,7 @@ contract GalleryRegistry is PermissionedRegistry, IRegistryURIRenderer {
         exhibitions[k]=Exhibition(p.label,p.title,p.manifestURI,address(mandates.artwork()),m.tokenId,address(mandates),mandateId,msg.sender,uint64(block.timestamp),p.custodyStatement);
         exhibitionResolver.publish(keccak256(abi.encodePacked(namespaceNode,bytes32(id))),p.contenthash,p.manifestURI);
         _register(p.label,gallery,IRegistry(address(0)),address(exhibitionResolver),0,type(uint64).max,false);
+        exhibitionDates[k]=uint64(block.timestamp);
         ids.push(id); emit ExhibitionPublished(id,address(mandates.artwork()),m.tokenId,mandateId);
     }
     struct Submission { uint256 exhibitionId; address mandates; uint256 mandateId; address settlement; address submitter; uint8 status; }
@@ -47,7 +54,18 @@ contract GalleryRegistry is PermissionedRegistry, IRegistryURIRenderer {
     event ExhibitionCreated(uint256 indexed id);
     event ArtworkSubmitted(uint256 indexed submissionId,uint256 indexed exhibitionId,address indexed artist);
     event SubmissionDecided(uint256 indexed submissionId,bool accepted);
-    function createExhibition(Publication calldata p) external returns(uint256 id) {
+    function recordEstablishment(uint64 occurredAt) external {
+        require(msg.sender==gallery,"Only gallery");
+        require(!establishmentRecorded && ids.length==0,"Establishment already fixed");
+        require(occurredAt>0 && occurredAt<=block.timestamp,"Establishment date must be past or present");
+        establishmentRecorded=true; establishedAt=occurredAt;
+        emit GalleryEstablishmentRecorded(occurredAt,uint64(block.timestamp),msg.sender);
+    }
+    function occurredAt(uint256 id) external view returns(uint64) { return exhibitionDates[id & ~uint256(type(uint32).max)]; }
+    function createExhibition(Publication calldata p) external returns(uint256 id) { return _createExhibition(p,uint64(block.timestamp)); }
+    function createExhibitionDated(Publication calldata p,uint64 date) external returns(uint256 id) { return _createExhibition(p,date); }
+    function _createExhibition(Publication calldata p,uint64 date) private returns(uint256 id) {
+        require(date>=establishedAt && date<=block.timestamp,"Exhibition date outside gallery lifetime");
         require(msg.sender==gallery,"Only gallery"); _validateLabel(p.label);
         bytes memory u=bytes(p.manifestURI);
         require(bytes(p.title).length>0 && bytes(p.title).length<=128 && u.length>7 && u.length<=256 && bytes7(u)==bytes7("ipfs://"),"Title and IPFS manifest required");
@@ -57,7 +75,9 @@ contract GalleryRegistry is PermissionedRegistry, IRegistryURIRenderer {
         exhibitions[k]=Exhibition(p.label,p.title,p.manifestURI,address(0),0,address(0),0,msg.sender,uint64(block.timestamp),p.custodyStatement);
         exhibitionResolver.publish(keccak256(abi.encodePacked(namespaceNode,bytes32(id))),p.contenthash,p.manifestURI);
         _register(p.label,gallery,IRegistry(address(0)),address(exhibitionResolver),0,type(uint64).max,false);
+        exhibitionDates[k]=date;
         ids.push(id); emit ExhibitionCreated(id);
+        emit ExhibitionDateRecorded(id,date,uint64(block.timestamp));
     }
     function submit(uint256 exhibitionId,MandateRegistry mandates,uint256 mandateId,SimpleSettlement settlement) external returns(uint256 id) {
         uint256 k=exhibitionId & ~uint256(type(uint32).max);

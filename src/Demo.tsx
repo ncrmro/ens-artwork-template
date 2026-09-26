@@ -1,4 +1,5 @@
 "use client";
+import catalogue from "./demo-catalogue.json";
 import defaults from "./demo-defaults.json";
 import React, { useState } from "react";
 type Terms = {
@@ -13,8 +14,12 @@ type HistoryEvent = {
   detail: string;
   showId?: string;
 };
-const artists = ["EON MUN", "Mika Sato"];
-const galleries = ["Atelier Gallery", "Harbour Gallery"];
+const artists = catalogue.participants
+  .filter((p) => p.kind === "artist")
+  .map((p) => p.name);
+const galleries = catalogue.participants
+  .filter((p) => p.kind === "gallery")
+  .map((p) => p.name);
 const event = (
   workId: string,
   title: string,
@@ -31,6 +36,7 @@ type Work = {
   id: string;
   artist: string;
   termsId: string;
+  createdAt?: string;
   resaleAfter?: string;
   title: string;
   medium: string;
@@ -45,6 +51,7 @@ type Show = {
   id: string;
   gallery: string;
   dates: string;
+  occurredAt?: string;
   status: "past" | "current";
   title: string;
   description: string;
@@ -64,209 +71,21 @@ const makeTerms = (id: string): Terms => ({
   royaltyBps: 500,
   holdDays: 180,
 });
-const initial: DemoState = {
-  works: [
-    {
-      id: "blue-mountain",
-      artist: "EON MUN",
-      termsId: "standard-artwork-v1",
-      title: "Blue Mountain",
-      medium: "Acrylic and gold leaf on linen",
-      dimensions: "48 × 116 inches",
-      price: "0.5",
-      owner: "Rowan Ellis",
-      resaleAfter: "2027-01-06",
-      variant: 0,
-    },
-    {
-      id: "quiet-tide",
-      artist: "EON MUN",
-      termsId: "standard-artwork-v1",
-      title: "Quiet Tide",
-      medium: "Oil on canvas",
-      dimensions: "60 × 80 cm",
-      price: "0.3",
-      owner: "EON MUN",
-      variant: 1,
-    },
-    {
-      id: "after-the-rain",
-      artist: "EON MUN",
-      termsId: "standard-artwork-v1",
-      title: "After the Rain",
-      medium: "Pigment and graphite on paper",
-      dimensions: "42 × 60 cm",
-      price: "0.2",
-      owner: "EON MUN",
-      variant: 2,
-    },
-    {
-      id: "folded-light",
-      artist: "Mika Sato",
-      termsId: "standard-artwork-v1",
-      title: "Folded Light",
-      medium: "Porcelain and glaze",
-      dimensions: "32 × 18 × 18 cm",
-      price: "0.35",
-      owner: "Alex Chen",
-      resaleAfter: "2026-12-01",
-      variant: 1,
-    },
-    {
-      id: "red-earth",
-      artist: "Mika Sato",
-      termsId: "standard-artwork-v1",
-      title: "Red Earth",
-      medium: "Mineral pigment on paper",
-      dimensions: "40 × 60 cm",
-      price: "0.25",
-      owner: "Mika Sato",
-      variant: 2,
-    },
-  ],
-  terms: { "standard-artwork-v1": makeTerms("standard-artwork-v1") },
-  shows: [
-    {
-      id: "tokyo",
-      gallery: "Atelier Gallery",
-      dates: "May–June 2026",
-      status: "past",
-      title: "Between Earth & Ether",
-      description:
-        "Physical works, independent identities. A Tokyo exhibition exploring landscape, material and memory.",
-      works: ["blue-mountain", "quiet-tide", "folded-light"],
-    },
-    {
-      id: "harbour",
-      gallery: "Harbour Gallery",
-      dates: "July–August 2026",
-      status: "past",
-      title: "Material & Memory",
-      description: "A travelling conversation between landscape and sculpture.",
-      works: ["blue-mountain", "folded-light"],
-    },
-    {
-      id: "common-ground",
-      gallery: "Atelier Gallery",
-      dates: "September–October 2026",
-      status: "current",
-      title: "Common Ground",
-      description:
-        "Works by independent artists, brought together with their histories intact.",
-      works: ["blue-mountain", "red-earth"],
-    },
-  ],
-  submissions: [],
-  history: [
-    {
-      workId: "blue-mountain",
-      date: "2025-11-08",
-      title: "Created by EON MUN",
-      detail: "Original artist and one canonical terms record established.",
-    },
-    {
-      workId: "blue-mountain",
-      date: "2026-01-04",
-      title: "Purchased by Alex Chen",
-      detail: "EON MUN → Alex Chen · 0.6 demo ETH · direct primary sale.",
-    },
-    {
-      workId: "blue-mountain",
-      date: "2026-05-01",
-      title: "Exhibited at Atelier Gallery",
-      detail:
-        "Between Earth & Ether · alongside works by Mika Sato. Alex retained ownership.",
-      showId: "tokyo",
-    },
-    {
-      workId: "blue-mountain",
-      date: "2026-07-01",
-      title: "Exhibited at Harbour Gallery",
-      detail: "Material & Memory · a new gallery, the same artwork and terms.",
-      showId: "harbour",
-    },
-    {
-      workId: "blue-mountain",
-      date: "2026-07-10",
-      title: "Purchased by Rowan Ellis",
-      detail:
-        "Alex Chen → Rowan Ellis · 0.8 demo ETH · 0.04 artist royalty · 0.08 gallery commission · 0.68 seller proceeds.",
-      showId: "harbour",
-    },
-    {
-      workId: "blue-mountain",
-      date: "2026-09-01",
-      title: "Exhibited again at Atelier Gallery",
-      detail:
-        "Common Ground · loaned by Rowan Ellis. Ownership did not change.",
-      showId: "common-ground",
-    },
-    {
-      workId: "folded-light",
-      date: "2026-02-12",
-      title: "Created by Mika Sato",
-      detail: "Original artist and independent terms record established.",
-    },
-    {
-      workId: "folded-light",
-      date: "2026-05-01",
-      title: "Exhibited at Atelier Gallery",
-      detail: "Between Earth & Ether · shown alongside EON MUN.",
-      showId: "tokyo",
-    },
-    {
-      workId: "folded-light",
-      date: "2026-06-04",
-      title: "Purchased by Alex Chen",
-      detail: "Mika Sato → Alex Chen · 0.35 demo ETH · gallery primary sale.",
-      showId: "tokyo",
-    },
-    {
-      workId: "folded-light",
-      date: "2026-07-01",
-      title: "Exhibited at Harbour Gallery",
-      detail: "Material & Memory · loaned by Alex Chen.",
-      showId: "harbour",
-    },
-    {
-      workId: "red-earth",
-      date: "2026-08-20",
-      title: "Created by Mika Sato",
-      detail: "Available directly from its original artist.",
-    },
-    {
-      workId: "red-earth",
-      date: "2026-09-01",
-      title: "Exhibited at Atelier Gallery",
-      detail: "Common Ground · shown alongside EON MUN.",
-      showId: "common-ground",
-    },
-    {
-      workId: "quiet-tide",
-      date: "2026-04-12",
-      title: "Created by EON MUN",
-      detail: "Original artist retains ownership.",
-    },
-    {
-      workId: "quiet-tide",
-      date: "2026-05-01",
-      title: "Exhibited at Atelier Gallery",
-      detail: "Between Earth & Ether.",
-      showId: "tokyo",
-    },
-    {
-      workId: "after-the-rain",
-      date: "2026-08-10",
-      title: "Created by EON MUN",
-      detail: "Available directly from its original artist.",
-    },
-  ],
-};
+const initial = catalogue as DemoState;
+
 function input(label: string, name: string, value = "", type = "text") {
   return (
     <label>
       {label}
-      <input name={name} type={type} defaultValue={value} required />
+      <input
+        name={name}
+        type={type}
+        defaultValue={value}
+        max={
+          type === "date" ? new Date().toISOString().slice(0, 10) : undefined
+        }
+        required
+      />
     </label>
   );
 }
@@ -428,6 +247,7 @@ export default function Demo({ page }: { page: string }) {
                       Date.now().toString(36) +
                       Math.random().toString(36).slice(2),
                     title,
+                    createdAt: String(f.get("createdAt")),
                     artist: String(f.get("artist")),
                     termsId: "",
                     medium: String(f.get("medium")),
@@ -449,11 +269,14 @@ export default function Demo({ page }: { page: string }) {
                       works: [...state.works, w],
                       history: [
                         ...state.history,
-                        event(
-                          w.id,
-                          `Created by ${w.artist}`,
-                          `${title} issued with one canonical terms record.`,
-                        ),
+                        {
+                          ...event(
+                            w.id,
+                            `Created by ${w.artist}`,
+                            `${title} issued with one canonical terms record.`,
+                          ),
+                          date: w.createdAt!,
+                        },
                       ],
                     },
                     "Demo artwork created. It appears in your collection.",
@@ -472,6 +295,12 @@ export default function Demo({ page }: { page: string }) {
                     </select>
                   </label>
                   {input("Artwork title", "title", "Blue Mountain Study")}
+                  {input(
+                    "Artwork creation date",
+                    "createdAt",
+                    new Date().toISOString().slice(0, 10),
+                    "date",
+                  )}
                   {input("Image IPFS URI", "image", defaults.image)}
                   {input("Manifest IPFS URI", "manifest", defaults.manifest)}
                   {input("Medium", "medium", "Oil on canvas")}
@@ -536,7 +365,8 @@ export default function Demo({ page }: { page: string }) {
                       Math.random().toString(36).slice(2),
                     title: String(f.get("title")),
                     gallery: String(f.get("gallery")),
-                    dates: "New exhibition",
+                    dates: String(f.get("occurredAt")),
+                    occurredAt: String(f.get("occurredAt")),
                     status: "current",
                     description: String(f.get("description")),
                     manifestURI: String(f.get("manifest")),
@@ -559,6 +389,12 @@ export default function Demo({ page }: { page: string }) {
                   </select>
                 </label>
                 {input("Exhibition title", "title", "Between Earth & Ether")}
+                {input(
+                  "Exhibition date",
+                  "occurredAt",
+                  new Date().toISOString().slice(0, 10),
+                  "date",
+                )}
                 {input(
                   "Exhibition manifest IPFS URI",
                   "manifest",

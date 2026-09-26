@@ -39,9 +39,9 @@ try {
   ).toBeVisible();
   const before = await p.evaluate(() => JSON.stringify(localStorage));
   for (const [kind, title, count] of [
-    ["art", "Explore artwork", 4],
-    ["galleries", "Galleries", 1],
-    ["exhibitions", "Exhibitions", 1],
+    ["art", "Explore artwork", 5],
+    ["galleries", "Galleries", 2],
+    ["exhibitions", "Exhibitions", 3],
   ]) {
     await p.goto(base + "/browse/" + kind + "/");
     await expect(
@@ -55,8 +55,14 @@ try {
     assert.equal(await p.evaluate(() => JSON.stringify(localStorage)), before);
   }
   await p
-    .getByRole("link", { name: "View exhibition", exact: false })
-    .last()
+    .locator(".art-card")
+    .filter({
+      has: p.getByRole("heading", {
+        name: "Between Earth & Ether",
+        exact: true,
+      }),
+    })
+    .getByRole("link", { name: "View exhibition" })
     .click();
   await expect(
     p.getByRole("heading", { name: "Between Earth & Ether", exact: true }),

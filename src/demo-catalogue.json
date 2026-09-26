@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "participants": [
+    {
+      "id": "eonmun",
+      "name": "EON MUN",
+      "kind": "artist",
+      "parent": "eonmun.eth",
+      "establishedAt": "2024-01-01"
+    },
+    {
+      "id": "mika",
+      "name": "Mika Sato",
+      "kind": "artist",
+      "parent": "mika-sato.eth",
+      "establishedAt": "2024-01-01"
+    },
+    {
+      "id": "atelier",
+      "name": "Atelier Gallery",
+      "kind": "gallery",
+      "parent": "atelier-gallery.eth",
+      "establishedAt": "2024-01-01"
+    },
+    {
+      "id": "harbour",
+      "name": "Harbour Gallery",
+      "kind": "gallery",
+      "parent": "harbour-gallery.eth",
+      "establishedAt": "2024-01-01"
+    }
+  ],
+  "works": [
+    {
+      "id": "blue-mountain",
+      "artist": "EON MUN",
+      "termsId": "standard-artwork-v1",
+      "title": "Blue Mountain",
+      "medium": "Acrylic and gold leaf on linen",
+      "dimensions": "48 × 116 inches",
+      "price": "0.5",
+      "owner": "Rowan Ellis",
+      "resaleAfter": "2027-01-06",
+      "variant": 0,
+      "createdAt": "2025-11-08"
+    },
+    {
+      "id": "quiet-tide",
+      "artist": "EON MUN",
+      "termsId": "standard-artwork-v1",
+      "title": "Quiet Tide",
+      "medium": "Oil on canvas",
+      "dimensions": "60 × 80 cm",
+      "price": "0.3",
+      "owner": "EON MUN",
+      "variant": 1,
+      "createdAt": "2026-04-12"
+    },
+    {
+      "id": "after-the-rain",
+      "artist": "EON MUN",
+      "termsId": "standard-artwork-v1",
+      "title": "After the Rain",
+      "medium": "Pigment and graphite on paper",
+      "dimensions": "42 × 60 cm",
+      "price": "0.2",
+      "owner": "EON MUN",
+      "variant": 2,
+      "createdAt": "2026-08-10"
+    },
+    {
+      "id": "folded-light",
+      "artist": "Mika Sato",
+      "termsId": "standard-artwork-v1",
+      "title": "Folded Light",
+      "medium": "Porcelain and glaze",
+      "dimensions": "32 × 18 × 18 cm",
+      "price": "0.35",
+      "owner": "Alex Chen",
+      "resaleAfter": "2026-12-01",
+      "variant": 1,
+      "createdAt": "2026-02-12"
+    },
+    {
+      "id": "red-earth",
+      "artist": "Mika Sato",
+      "termsId": "standard-artwork-v1",
+      "title": "Red Earth",
+      "medium": "Mineral pigment on paper",
+      "dimensions": "40 × 60 cm",
+      "price": "0.25",
+      "owner": "Mika Sato",
+      "variant": 2,
+      "createdAt": "2026-08-20"
+    }
+  ],
+  "terms": {
+    "standard-artwork-v1": {
+      "id": "standard-artwork-v1",
+      "royaltyBps": 500,
+      "holdDays": 180
+    }
+  },
+  "shows": [
+    {
+      "id": "tokyo",
+      "gallery": "Atelier Gallery",
+      "dates": "May–June 2026",
+      "status": "past",
+      "title": "Between Earth & Ether",
+      "description": "Physical works, independent identities. A Tokyo exhibition exploring landscape, material and memory.",
+      "works": [
+        "blue-mountain",
+        "quiet-tide",
+        "folded-light"
+      ],
+      "occurredAt": "2026-05-01"
+    },
+    {
+      "id": "harbour",
+      "gallery": "Harbour Gallery",
+      "dates": "July–August 2026",
+      "status": "past",
+      "title": "Material & Memory",
+      "description": "A travelling conversation between landscape and sculpture.",
+      "works": [
+        "blue-mountain",
+        "folded-light"
+      ],
+      "occurredAt": "2026-07-01"
+    },
+    {
+      "id": "common-ground",
+      "gallery": "Atelier Gallery",
+      "dates": "September–October 2026",
+      "status": "current",
+      "title": "Common Ground",
+      "description": "Works by independent artists, brought together with their histories intact.",
+      "works": [
+        "blue-mountain",
+        "red-earth"
+      ],
+      "occurredAt": "2026-09-01"
+    }
+  ],
+  "submissions": [],
+  "history": [
+    {
+      "workId": "blue-mountain",
+      "date": "2025-11-08",
+      "title": "Created by EON MUN",
+      "detail": "Original artist and one canonical terms record established."
+    },
+    {
+      "workId": "blue-mountain",
+      "date": "2026-01-04",
+      "title": "Purchased by Alex Chen",
+      "detail": "EON MUN → Alex Chen · 0.6 demo ETH · direct primary sale."
+    },
+    {
+      "workId": "blue-mountain",
+      "date": "2026-05-01",
+      "title": "Exhibited at Atelier Gallery",
+      "detail": "Between Earth & Ether · alongside works by Mika Sato. Alex retained ownership.",
+      "showId": "tokyo"
+    },
+    {
+      "workId": "blue-mountain",
+      "date": "2026-07-01",
+      "title": "Exhibited at Harbour Gallery",
+      "detail": "Material & Memory · a new gallery, the same artwork and terms.",
+      "showId": "harbour"
+    },
+    {
+      "workId": "blue-mountain",
+      "date": "2026-07-10",
+      "title": "Purchased by Rowan Ellis",
+      "detail": "Alex Chen → Rowan Ellis · 0.8 demo ETH · 0.04 artist royalty · 0.08 gallery commission · 0.68 seller proceeds.",
+      "showId": "harbour"
+    },
+    {
+      "workId": "blue-mountain",
+      "date": "2026-09-01",
+      "title": "Exhibited again at Atelier Gallery",
+      "detail": "Common Ground · loaned by Rowan Ellis. Ownership did not change.",
+      "showId": "common-ground"
+    },
+    {
+      "workId": "folded-light",
+      "date": "2026-02-12",
+      "title": "Created by Mika Sato",
+      "detail": "Original artist and independent terms record established."
+    },
+    {
+      "workId": "folded-light",
+      "date": "2026-05-01",
+      "title": "Exhibited at Atelier Gallery",
+      "detail": "Between Earth & Ether · shown alongside EON MUN.",
+      "showId": "tokyo"
+    },
+    {
+      "workId": "folded-light",
+      "date": "2026-06-04",
+      "title": "Purchased by Alex Chen",
+      "detail": "Mika Sato → Alex Chen · 0.35 demo ETH · gallery primary sale.",
+      "showId": "tokyo"
+    },
+    {
+      "workId": "folded-light",
+      "date": "2026-07-01",
+      "title": "Exhibited at Harbour Gallery",
+      "detail": "Material & Memory · loaned by Alex Chen.",
+      "showId": "harbour"
+    },
+    {
+      "workId": "red-earth",
+      "date": "2026-08-20",
+      "title": "Created by Mika Sato",
+      "detail": "Available directly from its original artist."
+    },
+    {
+      "workId": "red-earth",
+      "date": "2026-09-01",
+      "title": "Exhibited at Atelier Gallery",
+      "detail": "Common Ground · shown alongside EON MUN.",
+      "showId": "common-ground"
+    },
+    {
+      "workId": "quiet-tide",
+      "date": "2026-04-12",
+      "title": "Created by EON MUN",
+      "detail": "Original artist retains ownership."
+    },
+    {
+      "workId": "quiet-tide",
+      "date": "2026-05-01",
+      "title": "Exhibited at Atelier Gallery",
+      "detail": "Between Earth & Ether.",
+      "showId": "tokyo"
+    },
+    {
+      "workId": "after-the-rain",
+      "date": "2026-08-10",
+      "title": "Created by EON MUN",
+      "detail": "Available directly from its original artist."
+    }
+  ]
+}

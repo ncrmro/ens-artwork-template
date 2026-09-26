@@ -251,12 +251,19 @@ export default function Docs() {
             history.
           </p>
           <p>
-            The contract layer exposes issuance, submission, decision,
-            settlement and transfer events. A production history reader must
-            index those events across relevant registries and preserve their
-            transaction evidence. The richer multi-artist timeline shown in the
-            story demo is curated fictional data, not a claim that those sales
-            happened on Sepolia.
+            Dated issuance and exhibitions store the supplied historical date
+            separately from the actual block recording time. Galleries can
+            record an establishment date once, before their first exhibition.
+            All dates must be in the past or present.
+            ArtworkRegistry.recordHistory lets the original artist or current
+            owner append attributed historical reports, including past
+            purchases. These reports do not transfer the NFT, prove past
+            payment, or change the resale holding period. The contract layer
+            also exposes issuance, submission, decision, settlement and transfer
+            events. A production history reader must index those events across
+            relevant registries and preserve their transaction evidence. The
+            richer multi-artist timeline shown in the story demo is curated
+            fictional data, not a claim that those sales happened on Sepolia.
           </p>
         </section>
         <section className="section" id="demo">

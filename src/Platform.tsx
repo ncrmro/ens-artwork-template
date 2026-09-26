@@ -1,4 +1,6 @@
 "use client";
+import browseIndex from "./browse-index.json";
+import { ipfsURL } from "./ipfs";
 import SiteHeader from "./SiteHeader";
 import PageSkeleton, { CollectionSkeleton } from "./PageSkeleton";
 import defaults from "./demo-defaults.json";
@@ -66,6 +68,13 @@ const read = async (
     args,
   });
 const field = (f: FormData, k: string) => String(f.get(k) || "");
+const today = () => new Date().toISOString().slice(0, 10);
+const historicalDate = (date: string) => {
+  const value = Date.parse(date + "T00:00:00Z") / 1000;
+  if (!Number.isInteger(value) || value <= 0 || value > Date.now() / 1000)
+    throw Error("Choose a date in the past or today.");
+  return BigInt(value);
+};
 const ttl = () => BigInt(Math.floor(Date.now() / 1000) + 7 * 86400);
 const contextKey = (account: string) =>
   "artwork-platform:v3:" + chainId + ":" + account.toLowerCase();
@@ -75,17 +84,25 @@ function Input({
   type = "text",
   value = "",
   required = true,
+  max,
 }: {
   label: string;
   name: string;
   type?: string;
   value?: string;
   required?: boolean;
+  max?: string;
 }) {
   return (
     <label>
       {label}
-      <input name={name} type={type} defaultValue={value} required={required} />
+      <input
+        name={name}
+        type={type}
+        defaultValue={value}
+        required={required}
+        max={max}
+      />
     </label>
   );
 }
@@ -420,6 +437,28 @@ export default function Platform({ page }: { page: string }) {
       }
     }
     if (child === zeroAddress) child = "";
+    if (!asGallery && child && !previous.settlement) {
+      const indexed = (
+        config.localDemo?.catalogueIndex ||
+        (browseIndex.chainId === config.chainId ? browseIndex.namespaces : [])
+      ).find((n) => n.name === "art." + name);
+      if (
+        indexed?.settlement &&
+        isAddress(indexed.settlement) &&
+        same(
+          await read(indexed.settlement, "SimpleSettlement", "artwork"),
+          child,
+        )
+      ) {
+        previous.artwork = child;
+        previous.settlement = indexed.settlement;
+        previous.mandates = await read(
+          indexed.settlement,
+          "SimpleSettlement",
+          "mandates",
+        );
+      }
+    }
     save(
       asGallery
         ? {
@@ -539,8 +578,35 @@ export default function Platform({ page }: { page: string }) {
     } catch {
       /* legacy registry */
     }
+    let creationDate = 0,
+      recordedDate = 0;
+    const historical: any[] = [];
+    try {
+      creationDate = Number(
+        await read(address, "ArtworkRegistry", "createdAt", [id]),
+      );
+      recordedDate = Number(
+        await read(address, "ArtworkRegistry", "issuedAt", [key(id)]),
+      );
+      const count = Number(
+        await read(address, "ArtworkRegistry", "historyCount", [id]),
+      );
+      for (let i = 0; i < Math.min(count, 100); i++)
+        historical.push(
+          await read(address, "ArtworkRegistry", "historicalRecord", [
+            id,
+            BigInt(i),
+          ]),
+        );
+      historical.sort((a, b) => Number(a.occurredAt) - Number(b.occurredAt));
+    } catch {
+      /* Pre-history registry; do not invent dates. */
+    }
     return {
       ...g,
+      creationDate,
+      recordedDate,
+      historical,
       id,
       tokenId,
       owner,
@@ -594,7 +660,16 @@ export default function Platform({ page }: { page: string }) {
             "recordId",
             [BigInt(i)],
           );
+          let occurredAt = 0;
+          try {
+            occurredAt = Number(
+              await read(c.galleryRegistry, "GalleryRegistry", "occurredAt", [
+                id,
+              ]),
+            );
+          } catch {}
           exhibits.push({
+            occurredAt,
             ...(await read(c.galleryRegistry, "GalleryRegistry", "exhibition", [
               id,
             ])),
@@ -875,8 +950,7 @@ export default function Platform({ page }: { page: string }) {
     <img
       src={
         a.imageURI?.startsWith("ipfs://")
-          ? (config?.ipfsGateway || "https://ipfs.io/ipfs/") +
-            a.imageURI.slice(7)
+          ? ipfsURL(a.imageURI, config?.ipfsGateway)
           : "/blue-mountain.svg"
       }
       alt={a.title}
@@ -1234,23 +1308,33 @@ export default function Platform({ page }: { page: string }) {
                     const a = accountRef.current;
                     if (!a) throw Error("Connect wallet.");
                     const manifest = field(f, "manifest");
-                    await write(ctx.artwork, "ArtworkRegistry", "issue", [
-                      {
-                        label: field(f, "label"),
-                        title: field(f, "title"),
-                        year: Number(field(f, "year")),
-                        medium: field(f, "medium"),
-                        dimensions: field(f, "dimensions"),
-                        imageURI: field(f, "image"),
-                        manifestURI: manifest,
-                        contenthash: contentHash(manifest),
-                        agreementURI: "",
-                        agreementHash: zeroHash,
-                        artist: a,
-                        royaltyRecipient: a,
-                        royaltyBps: 500,
-                      },
-                    ]);
+                    await write(
+                      ctx.artwork,
+                      "ArtworkRegistry",
+                      field(f, "createdAt") ? "issueDated" : "issue",
+                      [
+                        {
+                          label: field(f, "label"),
+                          title: field(f, "title"),
+                          year: field(f, "createdAt")
+                            ? Number(field(f, "createdAt").slice(0, 4))
+                            : Number(field(f, "year")),
+                          medium: field(f, "medium"),
+                          dimensions: field(f, "dimensions"),
+                          imageURI: field(f, "image"),
+                          manifestURI: manifest,
+                          contenthash: contentHash(manifest),
+                          agreementURI: "",
+                          agreementHash: zeroHash,
+                          artist: a,
+                          royaltyRecipient: a,
+                          royaltyBps: 500,
+                        },
+                        ...(field(f, "createdAt")
+                          ? [historicalDate(field(f, "createdAt"))]
+                          : []),
+                      ],
+                    );
                     setMessage(
                       "Artwork issued. Genesis is permanently locked.",
                     );
@@ -1258,6 +1342,17 @@ export default function Platform({ page }: { page: string }) {
                 }}
               >
                 <h2>Create artwork</h2>
+                <Input
+                  label="Artwork creation date (optional)"
+                  name="createdAt"
+                  type="date"
+                  required={false}
+                  max={today()}
+                />
+                <p className="fine">
+                  Leave blank for today. Historical dates are artist-reported;
+                  the mint is recorded at the current block time.
+                </p>
                 <div className="config-grid">
                   <Input
                     label="Title"
@@ -1314,6 +1409,39 @@ export default function Platform({ page }: { page: string }) {
         )}
         {page === "gallery" && ready && same(account, galleryOwner) && (
           <>
+            {!shows.length && (
+              <form
+                className="panel"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  void act(() =>
+                    write(
+                      ctx.galleryRegistry,
+                      "GalleryRegistry",
+                      "recordEstablishment",
+                      [historicalDate(field(f, "establishedAt"))],
+                    ),
+                  );
+                }}
+              >
+                <h2>Gallery establishment</h2>
+                <p>
+                  Record the gallery’s historical founding date once, before its
+                  first exhibition. Contract deployment keeps its actual
+                  timestamp.
+                </p>
+                <Input
+                  label="Gallery establishment date"
+                  name="establishedAt"
+                  type="date"
+                  max={today()}
+                />
+                <button className="button" disabled={busy}>
+                  Record establishment date
+                </button>
+              </form>
+            )}
             <form
               className="panel"
               onSubmit={(e) => {
@@ -1324,7 +1452,9 @@ export default function Platform({ page }: { page: string }) {
                   await write(
                     ctx.galleryRegistry,
                     "GalleryRegistry",
-                    "createExhibition",
+                    field(f, "occurredAt")
+                      ? "createExhibitionDated"
+                      : "createExhibition",
                     [
                       {
                         label: field(f, "label"),
@@ -1333,6 +1463,9 @@ export default function Platform({ page }: { page: string }) {
                         contenthash: contentHash(u),
                         custodyStatement: field(f, "statement"),
                       },
+                      ...(field(f, "occurredAt")
+                        ? [historicalDate(field(f, "occurredAt"))]
+                        : []),
                     ],
                   );
                   setMessage("Exhibition created. Open it to invite artists.");
@@ -1340,6 +1473,17 @@ export default function Platform({ page }: { page: string }) {
               }}
             >
               <h2>Create exhibition</h2>
+              <Input
+                label="Exhibition date (optional)"
+                name="occurredAt"
+                type="date"
+                required={false}
+                max={today()}
+              />
+              <p className="fine">
+                For a past exhibition, first record the gallery’s establishment
+                date. Future dates are not accepted.
+              </p>
               <Input label="Exhibition title" name="title" />
               <Input label="Exhibition label" name="label" />
               <Input
@@ -1470,7 +1614,7 @@ export default function Platform({ page }: { page: string }) {
                     )}
                   </section>
                   <a
-                    href={config?.ipfsGateway + selected.manifestURI.slice(7)}
+                    href={ipfsURL(selected.manifestURI, config?.ipfsGateway)}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -1668,6 +1812,100 @@ export default function Platform({ page }: { page: string }) {
                 </div>
               )}
               <section className="panel">
+                <h2>Artwork history</h2>
+                {selected.creationDate > 0 && (
+                  <p>
+                    Created{" "}
+                    {new Date(
+                      selected.creationDate * 1000,
+                    ).toLocaleDateString()}{" "}
+                    · minted on chain{" "}
+                    {new Date(
+                      selected.recordedDate * 1000,
+                    ).toLocaleDateString()}
+                    .
+                  </p>
+                )}
+                <p>
+                  Historical entries are attributed reports, not proof of past
+                  on-chain payments. They do not change the current token owner
+                  or its holding period.
+                </p>
+                {selected.historical.map((h: any, i: number) => (
+                  <article className="submission" key={i}>
+                    <p className="eyebrow">
+                      {new Date(
+                        Number(h.occurredAt) * 1000,
+                      ).toLocaleDateString()}{" "}
+                      · reported history
+                    </p>
+                    <h3>{h.title}</h3>
+                    <p>{h.detail}</p>
+                    <p className="fine">
+                      Recorded by {short(h.recordedBy)} on{" "}
+                      {new Date(
+                        Number(h.recordedAt) * 1000,
+                      ).toLocaleDateString()}
+                    </p>
+                  </article>
+                ))}
+                {!selected.historical.length && (
+                  <p>No historical reports recorded.</p>
+                )}
+                {selected.creationDate > 0 &&
+                  (same(account, selected.artist) ||
+                    same(account, selected.owner)) && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const f = new FormData(e.currentTarget);
+                        void act(() =>
+                          write(
+                            selected.address,
+                            "ArtworkRegistry",
+                            "recordHistory",
+                            [
+                              selected.tokenId,
+                              {
+                                referenceId: keccak256(
+                                  stringToHex(
+                                    String(Date.now()) + ":" + Math.random(),
+                                  ),
+                                ),
+                                kind: Number(field(f, "kind")),
+                                occurredAt: historicalDate(field(f, "date")),
+                                title: field(f, "title"),
+                                detail: field(f, "detail"),
+                              },
+                            ],
+                          ),
+                        );
+                      }}
+                    >
+                      <h3>Add historical record</h3>
+                      <label>
+                        Event type
+                        <select name="kind" defaultValue="3">
+                          <option value="1">Creation</option>
+                          <option value="2">Exhibition</option>
+                          <option value="3">Historical purchase</option>
+                        </select>
+                      </label>
+                      <Input
+                        label="Historical event date"
+                        name="date"
+                        type="date"
+                        max={today()}
+                      />
+                      <Input label="History title" name="title" />
+                      <Input label="Historical details" name="detail" />
+                      <button className="button" disabled={busy}>
+                        Record history
+                      </button>
+                    </form>
+                  )}
+              </section>
+              <section className="panel">
                 <h2>Gallery permissions</h2>
                 {submissions
                   .filter(
@@ -1757,6 +1995,17 @@ export default function Platform({ page }: { page: string }) {
                 {currentShow.label}.exhibitions.{ctx.galleryName}
               </p>
               <h1>{currentShow.title}</h1>
+              {!!currentShow.occurredAt && (
+                <p>
+                  Exhibition date:{" "}
+                  {new Date(currentShow.occurredAt * 1000).toLocaleDateString()}{" "}
+                  · recorded on chain{" "}
+                  {new Date(
+                    Number(currentShow.recordedAt) * 1000,
+                  ).toLocaleDateString()}
+                  .
+                </p>
+              )}
               <p className="intro">
                 {currentShow.custodyStatement ||
                   "An independently curated collection of physical artwork."}

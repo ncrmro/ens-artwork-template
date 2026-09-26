@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { isAddress, zeroAddress, type Address } from "viem";
+import index from "./browse-index.json";
+import { ipfsURL } from "./ipfs";
 import SiteHeader from "./SiteHeader";
 import { CollectionSkeleton } from "./PageSkeleton";
 import {
@@ -44,90 +46,135 @@ export default function Browse({ kind }: { kind: string }) {
     setError("");
     try {
       const rows: Entry[] = [];
+      const unavailable: string[] = [];
       for (const parent of [...new Set(names)]) {
-        const name = validateParent(parent);
-        const ns = await client.readContract({
-          address: c.ens.ETHRegistry,
-          abi: parentAbi,
-          functionName: "getSubregistry",
-          args: [name.split(".")[0]],
-        });
-        if (ns === zeroAddress) continue;
-        const art = await read(ns, "ParticipantRegistry", "getSubregistry", [
-          "art",
-        ]);
-        const gallery = await read(
-          ns,
-          "ParticipantRegistry",
-          "getSubregistry",
-          ["exhibitions"],
-        );
-        if (isAddress(art) && art !== zeroAddress) {
-          const count = Number(
-            await read(art, "ArtworkRegistry", "recordCount"),
-          );
-          for (let i = 0; i < Math.min(count, 100); i++) {
-            const token = await read(art, "ArtworkRegistry", "recordId", [
-              BigInt(i),
-            ]);
-            const g = await read(art, "ArtworkRegistry", "genesis", [token]);
-            const q = new URLSearchParams({
-              registry: art,
-              art: String(token),
-            });
-            // Known sale references are optional; never borrow the visitor's managed tenant.
-            const local = c.localDemo?.context;
-            if (
-              local?.artwork?.toLowerCase() === art.toLowerCase() &&
-              local.settlement
-            )
-              q.set("sale", local.settlement);
-            else if (
-              c.lifecycle.artwork?.toLowerCase() === art.toLowerCase() &&
-              c.lifecycle.settlement
-            )
-              q.set("sale", c.lifecycle.settlement);
-            rows.push({
-              type: "art",
-              name: g.label + ".art." + name,
-              title: g.title,
-              image: g.imageURI,
-              href: "/artwork/?" + q,
-              detail: g.medium + " · " + g.year,
-            });
-          }
-        }
-        if (isAddress(gallery) && gallery !== zeroAddress) {
-          const count = Number(
-            await read(gallery, "GalleryRegistry", "recordCount"),
-          );
-          rows.push({
-            type: "gallery",
-            name: "exhibitions." + name,
-            title: name,
-            href: "/browse/exhibitions/?name=" + encodeURIComponent(name),
-            detail: count + " exhibitions",
+        try {
+          const name = validateParent(parent);
+          const ns = await client.readContract({
+            address: c.ens.ETHRegistry,
+            abi: parentAbi,
+            functionName: "getSubregistry",
+            args: [name.split(".")[0]],
           });
-          for (let i = 0; i < Math.min(count, 100); i++) {
-            const token = await read(gallery, "GalleryRegistry", "recordId", [
-              BigInt(i),
-            ]);
-            const show = await read(gallery, "GalleryRegistry", "exhibition", [
-              token,
-            ]);
-            rows.push({
-              type: "exhibition",
-              name: show.label + ".exhibitions." + name,
-              title: show.title,
-              href:
-                "/exhibition/?" +
-                new URLSearchParams({ registry: gallery, show: String(token) }),
-              detail: "Presented by " + name,
-            });
+          if (ns === zeroAddress) {
+            unavailable.push(name);
+            continue;
           }
+          const art = await read(ns, "ParticipantRegistry", "getSubregistry", [
+            "art",
+          ]);
+          const gallery = await read(
+            ns,
+            "ParticipantRegistry",
+            "getSubregistry",
+            ["exhibitions"],
+          );
+          if (isAddress(art) && art !== zeroAddress) {
+            const count = Number(
+              await read(art, "ArtworkRegistry", "recordCount"),
+            );
+            for (let i = 0; i < Math.min(count, 100); i++) {
+              const token = await read(art, "ArtworkRegistry", "recordId", [
+                BigInt(i),
+              ]);
+              const g = await read(art, "ArtworkRegistry", "genesis", [token]);
+              const q = new URLSearchParams({
+                registry: art,
+                art: String(token),
+              });
+              // Known sale references are optional; never borrow the visitor's managed tenant.
+              const local = c.localDemo?.context;
+              if (
+                local?.artwork?.toLowerCase() === art.toLowerCase() &&
+                local.settlement
+              )
+                q.set("sale", local.settlement);
+              else if (
+                c.lifecycle.artwork?.toLowerCase() === art.toLowerCase() &&
+                c.lifecycle.settlement
+              )
+                q.set("sale", c.lifecycle.settlement);
+              const indexed = (
+                c.localDemo?.catalogueIndex ||
+                (index.chainId === c.chainId ? index.namespaces : [])
+              ).find((n) => n.name === "art." + name);
+              if (indexed?.settlement && isAddress(indexed.settlement)) {
+                const linked = await read(
+                  indexed.settlement,
+                  "SimpleSettlement",
+                  "artwork",
+                );
+                if (linked.toLowerCase() === art.toLowerCase())
+                  q.set("sale", indexed.settlement);
+              }
+              rows.push({
+                type: "art",
+                name: g.label + ".art." + name,
+                title: g.title,
+                image: g.imageURI,
+                href: "/artwork/?" + q,
+                detail: g.medium + " · " + g.year,
+              });
+            }
+          }
+          if (isAddress(gallery) && gallery !== zeroAddress) {
+            const count = Number(
+              await read(gallery, "GalleryRegistry", "recordCount"),
+            );
+            let established = "";
+            try {
+              const date = Number(
+                await read(gallery, "GalleryRegistry", "establishedAt"),
+              );
+              established =
+                " · Established " + new Date(date * 1000).toLocaleDateString();
+            } catch {}
+            rows.push({
+              type: "gallery",
+              name: "exhibitions." + name,
+              title:
+                (
+                  c.localDemo?.catalogueIndex ||
+                  (index.chainId === c.chainId ? index.namespaces : [])
+                ).find((n) => n.name === "exhibitions." + name)?.displayName ||
+                name,
+              href: "/browse/exhibitions/?name=" + encodeURIComponent(name),
+              detail: count + " exhibitions" + established,
+            });
+            for (let i = 0; i < Math.min(count, 100); i++) {
+              const token = await read(gallery, "GalleryRegistry", "recordId", [
+                BigInt(i),
+              ]);
+              const show = await read(
+                gallery,
+                "GalleryRegistry",
+                "exhibition",
+                [token],
+              );
+              rows.push({
+                type: "exhibition",
+                name: show.label + ".exhibitions." + name,
+                title: show.title,
+                href:
+                  "/exhibition/?" +
+                  new URLSearchParams({
+                    registry: gallery,
+                    show: String(token),
+                  }),
+                detail: "Presented by " + name,
+              });
+            }
+          }
+        } catch {
+          unavailable.push(parent);
         }
       }
       if (id === request.current) {
+        if (unavailable.length)
+          setError(
+            "Some indexed namespaces are not deployed or could not be read: " +
+              unavailable.join(", "),
+          );
         setEntries(rows);
         setSearched(names.length > 0);
       }
@@ -155,8 +202,14 @@ export default function Browse({ kind }: { kind: string }) {
           name
             ? [name]
             : local
-              ? [local.parent, local.galleryName].filter(Boolean)
-              : [],
+              ? c.localDemo?.catalogueIndex?.map((n) =>
+                  n.name.split(".").slice(1).join("."),
+                ) || [local.parent, local.galleryName].filter(Boolean)
+              : index.chainId === c.chainId
+                ? index.namespaces.map((n) =>
+                    n.name.split(".").slice(1).join("."),
+                  )
+                : [],
         );
       })
       .catch((e) => {
@@ -190,8 +243,9 @@ export default function Browse({ kind }: { kind: string }) {
               : "Explore artwork"}
         </h1>
         <p className="intro">
-          Explore an artist or gallery by their ENS name. View original artwork
-          records and exhibitions without entering a management workspace.
+          Discover artwork and exhibitions from our indexed artist and gallery
+          namespaces. Records are read from the connected blockchain. You can
+          also look up an ENS name.
         </p>
         <nav className="browse-tabs" aria-label="Browse collections">
           {[
@@ -235,10 +289,7 @@ export default function Browse({ kind }: { kind: string }) {
               <article className="panel art-card" key={e.name}>
                 {e.image?.startsWith("ipfs://") && (
                   <img
-                    src={
-                      (config?.ipfsGateway || "https://ipfs.io/ipfs/") +
-                      e.image.slice(7)
-                    }
+                    src={ipfsURL(e.image, config?.ipfsGateway)}
                     alt={e.title}
                   />
                 )}

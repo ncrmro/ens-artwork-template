@@ -60,11 +60,18 @@ const server = http.createServer(async (req, res) => {
       });
     if (url.pathname === "/api/names") {
       const a = (url.searchParams.get("address") || "").toLowerCase();
-      const names = Object.entries({
+      const known = {
         "eonmun.eth": c.localDemo.accounts.artist,
         "atelier.eth": c.localDemo.accounts.gallery,
-      })
-        .filter(([, owner]) => owner.toLowerCase() === a)
+        ...Object.fromEntries(
+          (c.localDemo.catalogueIndex || []).map((n) => [
+            n.name.split(".").slice(1).join("."),
+            n.wallet,
+          ]),
+        ),
+      };
+      const names = Object.entries(known)
+        .filter(([, owner]) => owner?.toLowerCase() === a)
         .map(([name]) => name);
       return json(200, { names, nextSkip: null, nextAfter: null });
     }

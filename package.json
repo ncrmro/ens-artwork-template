@@ -24,7 +24,11 @@
     "local:fixtures": "node scripts/local/fixtures.mjs",
     "local:verify": "node scripts/local/verify.mjs",
     "local:verify:policy": "node scripts/local/verify-policy.mjs",
-    "test:story": "node scripts/browser-story.mjs"
+    "test:story": "node scripts/browser-story.mjs",
+    "seed:check": "node scripts/seed/sepolia.mjs",
+    "seed:sepolia": "node scripts/seed/sepolia.mjs --apply",
+    "seed:assets": "node scripts/seed/generate-assets.mjs",
+    "seed:verify": "node scripts/seed/verify-local.mjs"
   },
   "dependencies": {
     "multiformats": "latest",

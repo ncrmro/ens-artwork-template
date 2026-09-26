@@ -30,3 +30,6 @@ The terms MUST, MUST NOT, SHOULD, and MAY are interpreted as defined in RFC 2119
 22. The current tenant MUST be restored from localStorage scoped by wallet, network and local demo instance. URL parameters MUST NOT select or overwrite the tenant. Shared artwork, exhibition and invitation links MAY identify records without changing the managed tenant.
 
 23. The namespace selector MUST switch between accessible artist and gallery management workspaces. Public art, gallery and exhibition browsing MUST be separate, require no wallet, and MUST NOT change the managed tenant.
+
+24. Artwork creation, gallery establishment, exhibitions and attributed historical records MUST accept past or present dates and reject future dates. Historical event dates MUST remain distinct from actual transaction recording times. Historical reports MUST NOT alter token ownership, settlement receipts or holding periods.
+25. The staged demo and chain seed MUST share a static catalogue. The seed MUST checkpoint transaction hashes, resume without duplicate writes, and verify names and deployed records before exporting the browse index. Public browsing MUST automatically load the configured ENS namespace index without changing the current tenant.

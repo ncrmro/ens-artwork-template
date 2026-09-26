@@ -1,0 +1,25 @@
+{
+  "chainId": 11155111,
+  "namespaces": [
+    {
+      "name": "art.eonmun.eth",
+      "displayName": "EON MUN",
+      "settlement": ""
+    },
+    {
+      "name": "art.mika-sato.eth",
+      "displayName": "Mika Sato",
+      "settlement": ""
+    },
+    {
+      "name": "exhibitions.atelier-gallery.eth",
+      "displayName": "Atelier Gallery",
+      "settlement": ""
+    },
+    {
+      "name": "exhibitions.harbour-gallery.eth",
+      "displayName": "Harbour Gallery",
+      "settlement": ""
+    }
+  ]
+}
