@@ -412,11 +412,12 @@ export default function Admin() {
               </p>
               <p>
                 Each deployment and write requires a Sepolia wallet confirmation
-                (multiple transactions per participant and artwork). You can
-                reject a prompt and resume later from this browser. Keep your
-                checkpoint backup. The completed index is published on-chain
-                beneath ncrmro.eth and is read by both live websites
-                automatically.
+                (multiple transactions per participant and artwork). Artworks
+                are minted first, after each artist’s ENS setup; galleries,
+                loans and sales follow. You can reject a prompt and resume later
+                from this browser. Keep your checkpoint backup. The completed
+                index is published on-chain beneath ncrmro.eth and is read by
+                both live websites automatically.
               </p>
               <div className="config-grid">
                 <button

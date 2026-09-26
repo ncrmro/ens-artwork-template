@@ -197,7 +197,28 @@ try {
   w.writeContract = realWrite;
   const result = await runAdminSeed(opts);
   assert.equal(result.index.namespaces.length, 3);
-  assert.equal(store.bootstrap.previousRegistries["davinci.eth"].toLowerCase(), oldNamespace.toLowerCase());
+  const confirmed = store.catalogue.transactions;
+  const mintBlocks = catalogue.works.map(
+    (work) => confirmed["mint." + work.id].blockNumber,
+  );
+  const lastMint = Math.max(...mintBlocks);
+  for (const participant of catalogue.participants) {
+    const following =
+      participant.kind === "gallery"
+        ? ["ParticipantRegistry", "GalleryRegistry"]
+        : ["MandateRegistry", "SimpleSettlement", "approve"];
+    for (const step of following) {
+      assert.ok(
+        confirmed[participant.id + "." + step].blockNumber > lastMint,
+        participant.id + "." + step + " must follow artwork issuance",
+      );
+    }
+  }
+
+  assert.equal(
+    store.bootstrap.previousRegistries["davinci.eth"].toLowerCase(),
+    oldNamespace.toLowerCase(),
+  );
   const after = await pc.getBlockNumber({ cacheTime: 0 });
   await runAdminSeed(opts);
   assert.equal(

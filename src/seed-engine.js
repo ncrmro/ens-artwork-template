@@ -236,7 +236,40 @@ export async function seedCatalogue({
           " already has a different subregistry. Choose a fresh name; it will not be replaced.",
       );
   }
-  for (const p of participants) {
+  async function mintArtwork(w, a) {
+    const media = assets.works[w.id];
+    await write(
+      "mint." + w.id,
+      a,
+      a.registry,
+      "ArtworkRegistry",
+      "issueDated",
+      [
+        {
+          label: w.id,
+          title: w.title,
+          year: Number(w.createdAt.slice(0, 4)),
+          medium: w.medium,
+          dimensions: w.dimensions,
+          imageURI: media.image,
+          manifestURI: media.manifest,
+          contenthash: contenthash(media.manifest),
+          agreementURI: "",
+          agreementHash: zeroHash,
+          artist: a.wallet,
+          royaltyRecipient: a.wallet,
+          royaltyBps: 500,
+        },
+        date(w.createdAt),
+      ],
+    );
+  }
+  // Complete each artist's issuance before configuring galleries or sales.
+  const issuanceFirst = [
+    ...participants.filter((p) => p.kind === "artist"),
+    ...participants.filter((p) => p.kind !== "artist"),
+  ];
+  for (const p of issuanceFirst) {
     p.namespace = await deploy(p, "ParticipantRegistry", [
       config.ens.LabelStore,
       adapter.parentRegistry
@@ -292,6 +325,14 @@ export async function seedCatalogue({
         [date(p.establishedAt)],
       );
     if (p.kind === "artist") {
+      for (const work of catalogue.works.filter((w) => w.artist === p.name)) {
+        await mintArtwork(work, p);
+      }
+    }
+  }
+  // Sales and loans are optional infrastructure after the artwork exists.
+  for (const p of participants) {
+    if (p.kind === "artist") {
       p.mandates = await deploy(p, "MandateRegistry", [p.registry]);
       p.settlement = await deploy(p, "SimpleSettlement", [p.mandates]);
       await write(
@@ -303,35 +344,6 @@ export async function seedCatalogue({
         [p.settlement, true],
       );
     }
-  }
-  for (const w of catalogue.works) {
-    const a = participants.find((p) => p.name === w.artist);
-    const media = assets.works[w.id];
-    await write(
-      "mint." + w.id,
-      a,
-      a.registry,
-      "ArtworkRegistry",
-      "issueDated",
-      [
-        {
-          label: w.id,
-          title: w.title,
-          year: Number(w.createdAt.slice(0, 4)),
-          medium: w.medium,
-          dimensions: w.dimensions,
-          imageURI: media.image,
-          manifestURI: media.manifest,
-          contenthash: contenthash(media.manifest),
-          agreementURI: "",
-          agreementHash: zeroHash,
-          artist: a.wallet,
-          royaltyRecipient: a.wallet,
-          royaltyBps: 500,
-        },
-        date(w.createdAt),
-      ],
-    );
   }
   for (const s of catalogue.shows) {
     const g = participants.find((p) => p.name === s.gallery);
