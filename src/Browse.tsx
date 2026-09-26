@@ -15,7 +15,6 @@ import {
   configureChain,
   contracts,
   parentAbi,
-  validateParent,
   type Config,
 } from "./chain";
 type Entry = {
@@ -33,7 +32,6 @@ export default function Browse({ kind }: { kind: string }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searched, setSearched] = useState(false);
   const request = useRef(0);
   const read = (
     address: string,
@@ -143,7 +141,7 @@ export default function Browse({ kind }: { kind: string }) {
               established =
                 " · Established " + new Date(date * 1000).toLocaleDateString();
             } catch {}
-            rows.push({
+            const galleryEntry: Entry = {
               type: "gallery",
               name: "exhibitions." + name,
               title:
@@ -151,7 +149,8 @@ export default function Browse({ kind }: { kind: string }) {
                   ?.displayName || name,
               href: "/browse/exhibitions/?name=" + encodeURIComponent(name),
               detail: count + " exhibitions" + established,
-            });
+            };
+            rows.push(galleryEntry);
             for (let i = 0; i < Math.min(count, 100); i++) {
               const token = await read(gallery, "GalleryRegistry", "recordId", [
                 BigInt(i),
@@ -162,8 +161,53 @@ export default function Browse({ kind }: { kind: string }) {
                 "exhibition",
                 [token],
               );
+              let image: string | undefined;
+              try {
+                if (isAddress(show.artwork) && show.artwork !== zeroAddress) {
+                  image = (
+                    await read(show.artwork, "ArtworkRegistry", "genesis", [
+                      show.artworkId,
+                    ])
+                  ).imageURI;
+                } else {
+                  const accepted = await read(
+                    gallery,
+                    "GalleryRegistry",
+                    "acceptedSubmissions",
+                    [token],
+                  );
+                  if (accepted.length) {
+                    const submission = await read(
+                      gallery,
+                      "GalleryRegistry",
+                      "submissions",
+                      [accepted[0]],
+                    );
+                    const mandate = await read(
+                      submission[1],
+                      "MandateRegistry",
+                      "get",
+                      [submission[2]],
+                    );
+                    const registry = await read(
+                      submission[1],
+                      "MandateRegistry",
+                      "artwork",
+                    );
+                    image = (
+                      await read(registry, "ArtworkRegistry", "genesis", [
+                        mandate.tokenId,
+                      ])
+                    ).imageURI;
+                  }
+                }
+              } catch {
+                // A missing thumbnail must not hide an indexed exhibition.
+              }
+              if (!galleryEntry.image && image) galleryEntry.image = image;
               rows.push({
                 type: "exhibition",
+                image,
                 name: show.label + ".exhibitions." + name,
                 title: show.title,
                 href:
@@ -188,7 +232,6 @@ export default function Browse({ kind }: { kind: string }) {
           );
         setEntries(rows);
         setPending(waiting);
-        setSearched(names.length > 0);
       }
     } catch (e: any) {
       if (id === request.current) setError(e.shortMessage || e.message);
@@ -210,18 +253,14 @@ export default function Browse({ kind }: { kind: string }) {
         namespaces.current = await publicNamespaces(client, c);
         if (gone) return;
         const name = new URLSearchParams(location.search).get("name");
-        const local = c.localDemo?.context;
+        const indexed = namespaces.current.map((n) =>
+          n.name.split(".").slice(1).join("."),
+        );
         void load(
           c,
-          name
-            ? [name]
-            : local
-              ? c.localDemo?.catalogueIndex?.map((n) =>
-                  n.name.split(".").slice(1).join("."),
-                ) || [local.parent, local.galleryName].filter(Boolean)
-              : namespaces.current.map((n) =>
-                  n.name.split(".").slice(1).join("."),
-                ),
+          name && indexed.includes(name.toLowerCase())
+            ? [name.toLowerCase()]
+            : indexed,
         );
       })
       .catch((e) => {
@@ -256,8 +295,7 @@ export default function Browse({ kind }: { kind: string }) {
         </h1>
         <p className="intro">
           Discover artwork and exhibitions from our indexed artist and gallery
-          namespaces. Records are read from the connected blockchain. You can
-          also look up an ENS name.
+          namespaces. Records are read from the connected blockchain.
         </p>
         <nav className="browse-tabs" aria-label="Browse collections">
           {[
@@ -274,24 +312,6 @@ export default function Browse({ kind }: { kind: string }) {
             </a>
           ))}
         </nav>
-        <form
-          className="panel browse-search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (config)
-              void load(config, [
-                String(new FormData(e.currentTarget).get("name")),
-              ]);
-          }}
-        >
-          <label>
-            Artist or gallery ENS name
-            <input name="name" required placeholder="artist.eth" />
-          </label>
-          <button className="button" disabled={!config || loading}>
-            Explore name ↗
-          </button>
-        </form>
         {error && <p role="alert">{error}</p>}
         {!loading && pending.length > 0 && (
           <section className="panel">
@@ -331,9 +351,7 @@ export default function Browse({ kind }: { kind: string }) {
         )}
         {!loading && !visible.length && (
           <p>
-            {searched
-              ? "No matching records in this namespace."
-              : "Enter an ENS name to explore its published records. This is a name lookup, not a complete index of every registry."}
+            No indexed {kind === "art" ? "artworks" : kind} are available yet.
           </p>
         )}
       </main>
