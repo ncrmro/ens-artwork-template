@@ -1214,6 +1214,55 @@ export default function Platform({ page }: { page: string }) {
               {gallery ? "exhibitions" : "artwork collection"}. Your wallet
               signs each setup transaction.
             </p>
+            {!gallery && (
+              <section className="panel" aria-labelledby="artwork-rules">
+                <h2 id="artwork-rules">The rules your artwork carries</h2>
+                <p>
+                  New artwork registries use one fixed set of contract-enforced
+                  terms. These rules cannot be customized.
+                </p>
+                <ul>
+                  <li>
+                    <strong>First sale available immediately.</strong> Minting
+                    an artwork does not start a waiting period.
+                  </li>
+                  <li>
+                    <strong>180 days before another sale or transfer.</strong>{" "}
+                    After the first transfer, the token must stay with its
+                    holder for 180 days. Each subsequent transfer starts a new
+                    180-day hold. The restriction also applies to gifts, batch
+                    transfers and approved operators.
+                  </li>
+                  <li>
+                    <strong>5% artist resale royalty.</strong> Resales through
+                    this platform’s direct-sale or gallery settlement contracts
+                    credit 5% of the sale price to the original artist. The
+                    initial artist sale is exempt. The artist withdraws credited
+                    proceeds from the settlement contract. External marketplaces
+                    are not guaranteed to pay this royalty.
+                  </li>
+                  <li>
+                    <strong>A permanent artwork record.</strong> The original
+                    artist, title, artwork details, IPFS image and metadata
+                    references, and royalty terms are locked when the artwork is
+                    issued.
+                  </li>
+                  <li>
+                    <strong>Exhibit without handing over ownership.</strong> An
+                    owner can authorize a gallery to exhibit or sell an artwork
+                    with limited permissions. A gallery loan does not transfer
+                    the token or bypass its holding period.
+                  </li>
+                </ul>
+                <p className="fine">
+                  These rules govern the artwork token. Physical custody and
+                  legal ownership are not verified by the contract. An artist’s
+                  right to buy back an artwork below a given price is not
+                  implemented.
+                </p>
+                <a href="/docs/">Read the contract details ↗</a>
+              </section>
+            )}
             <section className="panel">
               <h2>{ready ? "Your registry" : "Choose your ENS name"}</h2>
               {!account ? (
