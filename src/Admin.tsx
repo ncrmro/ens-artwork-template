@@ -1,4 +1,5 @@
 "use client";
+import { artworkLabel } from "./artwork-label";
 import { useEffect, useRef, useState } from "react";
 import SiteHeader from "./SiteHeader";
 import { adminClient, adminIdentity, sameAddress } from "./admin-chain";
@@ -379,7 +380,7 @@ export default function Admin() {
               <div className="config-grid">
                 {catalogue.participants.map((p: any) => (
                   <label key={p.id}>
-                    {p.name} · {p.kind}
+                    {artworkLabel(p.name)} · {p.kind}
                     <select
                       disabled={busy || locked}
                       value={parents[p.id]}

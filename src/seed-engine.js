@@ -1,3 +1,4 @@
+import { artworkLabel } from "./artwork-label.js";
 import {
   createPublicClient,
   createWalletClient,
@@ -247,7 +248,7 @@ export async function seedCatalogue({
       [
         {
           label: w.id,
-          title: w.title,
+          title: artworkLabel(w.title),
           year: Number(w.createdAt.slice(0, 4)),
           medium: w.medium,
           dimensions: w.dimensions,
@@ -463,7 +464,7 @@ export async function seedCatalogue({
           referenceId: keccak256(stringToHex("catalogue-v1:" + i)),
           kind,
           occurredAt: date(h.date),
-          title: h.title,
+          title: artworkLabel(h.title),
           detail: h.detail,
         },
       ],
@@ -505,7 +506,7 @@ export async function seedCatalogue({
       throw Error("Seed record count mismatch");
     namespaces.push({
       name: child + "." + p.parent,
-      displayName: p.name,
+      displayName: artworkLabel(p.name),
       wallet: p.wallet,
       registry: p.registry,
       settlement: p.settlement || "",

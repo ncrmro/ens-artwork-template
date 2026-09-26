@@ -1,4 +1,5 @@
 "use client";
+import { artworkLabel } from "./artwork-label";
 import { useEffect, useRef, useState } from "react";
 import { isAddress, zeroAddress, type Address } from "viem";
 import {
@@ -123,7 +124,7 @@ export default function Browse({ kind }: { kind: string }) {
               rows.push({
                 type: "art",
                 name: g.label + ".art." + name,
-                title: g.title,
+                title: artworkLabel(g.title),
                 image: g.imageURI,
                 href: "/artwork/?" + q,
                 detail: g.medium + " · " + g.year,
@@ -315,11 +316,11 @@ export default function Browse({ kind }: { kind: string }) {
                 {e.image?.startsWith("ipfs://") && (
                   <img
                     src={ipfsURL(e.image, config?.ipfsGateway)}
-                    alt={e.title}
+                    alt={artworkLabel(e.title)}
                   />
                 )}
                 <p className="eyebrow">{e.name}</p>
-                <h2>{e.title}</h2>
+                <h2>{artworkLabel(e.title)}</h2>
                 <p>{e.detail}</p>
                 <a className="button" href={e.href}>
                   {type === "gallery" ? "View exhibitions" : "View " + type} ↗

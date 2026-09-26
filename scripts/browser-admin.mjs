@@ -121,7 +121,7 @@ try {
   });
   await page.reload();
   await expect(
-    page.getByLabel("Leonardo da Vinci · demo editions · artist"),
+    page.getByLabel("Leonardo da Vinci · artist"),
   ).toHaveValue("davinci.eth");
   await page.getByRole("button", { name: "Resume seed", exact: true }).click();
   await expect(

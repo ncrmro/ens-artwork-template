@@ -1,4 +1,5 @@
 "use client";
+import { artworkLabel } from "./artwork-label";
 import browseIndex from "./browse-index.json";
 import { ipfsURL } from "./ipfs";
 import SiteHeader from "./SiteHeader";
@@ -542,7 +543,8 @@ export default function Platform({ page }: { page: string }) {
       !same(await read(settlement, "SimpleSettlement", "artwork"), address)
     )
       throw Error("Settlement does not match this artwork registry.");
-    const g = await read(address, "ArtworkRegistry", "genesis", [id]);
+    const raw = await read(address, "ArtworkRegistry", "genesis", [id]);
+    const g = { ...raw, title: artworkLabel(raw.title) };
     const tokenId = await read(address, "ArtworkRegistry", "getTokenId", [id]);
     const owner = await read(address, "ArtworkRegistry", "getOwner", [id]);
     let direct: any = null;
@@ -1839,7 +1841,7 @@ export default function Platform({ page }: { page: string }) {
                       ).toLocaleDateString()}{" "}
                       · reported history
                     </p>
-                    <h3>{h.title}</h3>
+                    <h3>{artworkLabel(h.title)}</h3>
                     <p>{h.detail}</p>
                     <p className="fine">
                       Recorded by {short(h.recordedBy)} on{" "}
