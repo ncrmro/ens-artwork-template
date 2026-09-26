@@ -145,6 +145,17 @@ export default function Platform({ page }: { page: string }) {
   const [galleryOwner, setGalleryOwner] = useState("");
   const [artistOwner, setArtistOwner] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
+  const creationScrolled = useRef(false);
+  useEffect(() => {
+    if (creationScrolled.current || dataLoading) return;
+    const id = location.hash.slice(1);
+    if (id !== "create-artwork" && id !== "create-exhibition") return;
+    const form = document.getElementById(id);
+    if (form) {
+      form.scrollIntoView();
+      creationScrolled.current = true;
+    }
+  }, [dataLoading, artistOwner, galleryOwner]);
   const refreshGeneration = useRef(0);
   const [payouts, setPayouts] = useState<{ address: string; amount: bigint }[]>(
     [],
@@ -1235,6 +1246,13 @@ export default function Platform({ page }: { page: string }) {
                 ? "Create exhibitions, invite artists and curate submissions without taking ownership of their NFTs."
                 : "Create a permanent identity for your physical art. Sell directly or work with a gallery."}
             </p>
+            {gallery && ready && same(account, galleryOwner) && (
+              <p>
+                <a className="button dark" href="#create-exhibition">
+                  Create exhibition ↗
+                </a>
+              </p>
+            )}
             {!ready && !dataLoading && (
               <section className="panel">
                 <p>
@@ -1435,6 +1453,13 @@ export default function Platform({ page }: { page: string }) {
         {page === "artist" && isAddress(ctx.artwork) && (
           <>
             <h2>Your collection</h2>
+            {same(account, artistOwner) && (
+              <p>
+                <a className="button dark" href="#create-artwork">
+                  Create artwork ↗
+                </a>
+              </p>
+            )}
             {dataLoading ? (
               <CollectionSkeleton />
             ) : (
@@ -1445,6 +1470,7 @@ export default function Platform({ page }: { page: string }) {
             )}
             {same(account, artistOwner) && (
               <form
+                id="create-artwork"
                 className="panel"
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -1579,6 +1605,7 @@ export default function Platform({ page }: { page: string }) {
               </form>
             )}
             <form
+              id="create-exhibition"
               className="panel"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1646,6 +1673,13 @@ export default function Platform({ page }: { page: string }) {
             <h2>
               {page === "artist" ? "Invited exhibitions" : "Your exhibitions"}
             </h2>
+            {gallery && same(account, galleryOwner) && (
+              <p>
+                <a className="button" href="#create-exhibition">
+                  Create exhibition ↗
+                </a>
+              </p>
+            )}
             <div className="catalogue">
               {shows.map((s) => (
                 <article className="panel" key={String(s.id)}>

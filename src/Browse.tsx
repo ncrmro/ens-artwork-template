@@ -339,6 +339,21 @@ export default function Browse({ kind }: { kind: string }) {
             </a>
           ))}
         </nav>
+        <p>
+          <a
+            className="button"
+            href={
+              kind === "art"
+                ? "/artist/#create-artwork"
+                : "/gallery/#create-exhibition"
+            }
+          >
+            {kind === "art"
+              ? "Create artwork in your workspace"
+              : "Create an exhibition in your workspace"}{" "}
+            ↗
+          </a>
+        </p>
         {error && <p role="alert">{error}</p>}
         {!loading && pending.length > 0 && (
           <section className="panel">
