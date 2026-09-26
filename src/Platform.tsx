@@ -149,7 +149,8 @@ export default function Platform({ page }: { page: string }) {
   );
   const [activeArt, setActiveArt] = useState("");
   const [showId, setShowId] = useState("");
-  const gallery = page === "gallery";
+  const setupPage = page === "setup-artist" || page === "setup-gallery";
+  const gallery = page === "gallery" || page === "setup-gallery";
   const managingGallery =
     gallery ||
     ((page === "artwork" || page === "exhibition") &&
@@ -1151,24 +1152,11 @@ export default function Platform({ page }: { page: string }) {
               independent home for physical art, then connect artists, galleries
               and collectors through one shared record.
             </p>
-            <div className="split">
-              <a className="panel choice-card" href="/artist/">
-                <span className="tag">FOR ARTISTS</span>
-                <h2>Create an art registry ↗</h2>
-                <p>
-                  Issue artwork, sell directly, or submit to a gallery
-                  exhibition.
-                </p>
+            <p>
+              <a className="button dark" href="/registry/">
+                Create a new registry ↗
               </a>
-              <a className="panel choice-card" href="/gallery/">
-                <span className="tag">FOR GALLERIES</span>
-                <h2>Create a gallery registry ↗</h2>
-                <p>
-                  Curate exhibitions, accept submissions and sell on an artist’s
-                  behalf.
-                </p>
-              </a>
-            </div>
+            </p>
             <a className="button dark" href="/demo/artist/">
               Explore the complete demo ↗
             </a>
@@ -1192,6 +1180,39 @@ export default function Platform({ page }: { page: string }) {
               {gallery
                 ? "Create exhibitions, invite artists and curate submissions without taking ownership of their NFTs."
                 : "Create a permanent identity for your physical art. Sell directly or work with a gallery."}
+            </p>
+            {!ready && !dataLoading && (
+              <section className="panel">
+                <p>
+                  {account
+                    ? "Select an existing workspace from the namespace menu above, or create a new registry."
+                    : "Connect your wallet to view your workspace, or browse published artwork and exhibitions."}
+                </p>
+                {!account && connectButton}
+                <a className="button" href="/registry/">
+                  Create a new registry ↗
+                </a>
+                <a
+                  className="button"
+                  href={gallery ? "/browse/galleries/" : "/browse/art/"}
+                >
+                  Browse {gallery ? "galleries" : "artwork"} ↗
+                </a>
+              </section>
+            )}
+          </>
+        )}
+        {setupPage && (
+          <>
+            <a href="/registry/">← Registry types</a>
+            <p className="eyebrow">
+              NEW {gallery ? "GALLERY" : "ARTWORK"} REGISTRY
+            </p>
+            <h1>Create your {gallery ? "gallery" : "artwork"} registry.</h1>
+            <p className="intro">
+              Choose a name you control to create your{" "}
+              {gallery ? "exhibitions" : "artwork collection"}. Your wallet
+              signs each setup transaction.
             </p>
             <section className="panel">
               <h2>{ready ? "Your registry" : "Choose your ENS name"}</h2>
@@ -1295,11 +1316,30 @@ export default function Platform({ page }: { page: string }) {
                   · Registry configured
                 </p>
               )}
+              {ready && (
+                <p>
+                  <a
+                    className="button dark"
+                    href={gallery ? "/gallery/" : "/artist/"}
+                  >
+                    Open {gallery ? "gallery" : "artist"} workspace ↗
+                  </a>
+                </p>
+              )}
             </section>
           </>
         )}
-        {page === "artist" && ready && (
+        {page === "artist" && isAddress(ctx.artwork) && (
           <>
+            <h2>Your collection</h2>
+            {dataLoading ? (
+              <CollectionSkeleton />
+            ) : (
+              <div className="catalogue">{artworks.map(card)}</div>
+            )}
+            {!dataLoading && !artworks.length && (
+              <p>Your first artwork will appear here.</p>
+            )}
             {same(account, artistOwner) && (
               <form
                 className="panel"
@@ -1397,15 +1437,6 @@ export default function Platform({ page }: { page: string }) {
                   Issue & lock genesis ↗
                 </button>
               </form>
-            )}
-            <h2>Your collection</h2>
-            {dataLoading ? (
-              <CollectionSkeleton />
-            ) : (
-              <div className="catalogue">{artworks.map(card)}</div>
-            )}
-            {!dataLoading && !artworks.length && (
-              <p>Your first artwork will appear here.</p>
             )}
           </>
         )}

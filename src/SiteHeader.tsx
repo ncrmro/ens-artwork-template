@@ -12,6 +12,7 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
       <nav aria-label="Main navigation">
         <a href="/browse/art/">Browse</a>
         <a href="/docs/">How it works</a>
+        <a href="/registry/">Create registry</a>
         <a href="/demo/artist/">Demo</a>
         <AdminLink />
       </nav>

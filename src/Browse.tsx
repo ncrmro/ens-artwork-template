@@ -285,7 +285,7 @@ export default function Browse({ kind }: { kind: string }) {
     <>
       <SiteHeader />
       <main className="page">
-        <p className="eyebrow">DISCOVER · NO WALLET REQUIRED</p>
+        <p className="eyebrow">DISCOVER</p>
         <h1>
           {kind === "galleries"
             ? "Galleries"
