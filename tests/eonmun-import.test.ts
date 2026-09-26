@@ -19,6 +19,21 @@ test('EON MUN import is additive, repeatable and preserves checkpoint records', 
     assert.equal('ipfs://'+CID.createV1(0x55,await sha256.digest(bytes)),asset.manifest);
     const metadata=JSON.parse(bytes.toString());
     assert.equal(metadata.name,w.title);
-    assert.equal(metadata.image,w.imageURI);
+    assert.equal(metadata.image,asset.image);
+    assert.ok(asset.image.startsWith("ipfs://"));
   }
+});
+
+test('repair only updates invalid media pins for unsubmitted mints', async()=>{
+  const {repairEonmunMediaPins,legacyEonmunAssets}=await import('../src/eonmun-import.js');
+  const {keccak256,stringToHex}=await import('viem');
+  const digest=(value:unknown)=>keccak256(stringToHex(JSON.stringify(value)));
+  const id=originals[0].id, key='media:'+id;
+  const old=digest((legacyEonmunAssets as any)[id]);
+  const fresh={pins:{[key]:old},transactions:{}};
+  repairEonmunMediaPins(fresh);
+  assert.equal(fresh.pins[key],digest((eonmunAssets as any)[id]));
+  const submitted={pins:{[key]:old},transactions:{['mint.'+id]:{hash:'0x123'}}};
+  repairEonmunMediaPins(submitted);
+  assert.equal(submitted.pins[key],old);
 });

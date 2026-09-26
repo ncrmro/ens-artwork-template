@@ -1,3 +1,4 @@
+import { repairEonmunMediaPins } from "./eonmun-import.js";
 import {
   encodeDeployData,
   encodeFunctionData,
@@ -222,7 +223,11 @@ export async function runAdminSeed({
   const parentRegistry = (p) => (nested(p) ? namespace : root);
   const byLabel = (label) =>
     participants.find((p) => p.parent.split(".")[0] === label);
-  const adminWrite = (options) => w.writeContract({ ...options, account });
+  const adminWrite = async (options) => {
+    const request = { ...options, account };
+    await pc.simulateContract(request);
+    return w.writeContract(request);
+  };
   const actorWallet = (p) => ({
     deployContract: (options) =>
       adminWrite({
@@ -308,7 +313,7 @@ export async function runAdminSeed({
           return adminWrite(options);
         },
       }),
-      loadJournal: () => load("catalogue"),
+      loadJournal: () => repairEonmunMediaPins(load("catalogue")),
       saveJournal: (j) => save("catalogue", j),
       assets: () => assets,
       beforeSend: async (key) => {
