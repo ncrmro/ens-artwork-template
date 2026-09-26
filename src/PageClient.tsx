@@ -1,21 +1,8 @@
 "use client";
-import dynamic from "next/dynamic";
-const Platform = dynamic(() => import("./Platform"), {
-  ssr: false,
-  loading: () => (
-    <main className="page">
-      <p>Loading Artwork Commons…</p>
-    </main>
-  ),
-});
-const Demo = dynamic(() => import("./Demo"), {
-  ssr: false,
-  loading: () => (
-    <main className="page">
-      <p>Loading demo…</p>
-    </main>
-  ),
-});
+import { lazy, Suspense, useEffect, useState } from "react";
+import PageSkeleton from "./PageSkeleton";
+const Platform = lazy(() => import("./Platform"));
+const Demo = lazy(() => import("./Demo"));
 export default function PageClient({
   page,
   demo = false,
@@ -23,5 +10,13 @@ export default function PageClient({
   page: string;
   demo?: boolean;
 }) {
-  return demo ? <Demo page={page} /> : <Platform page={page} />;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const fallback = <PageSkeleton page={page} />;
+  if (!mounted) return fallback;
+  return (
+    <Suspense fallback={fallback}>
+      {demo ? <Demo page={page} /> : <Platform page={page} />}
+    </Suspense>
+  );
 }

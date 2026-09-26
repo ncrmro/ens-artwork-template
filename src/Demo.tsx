@@ -5,8 +5,6 @@ type Terms = {
   id: string;
   royaltyBps: number;
   holdDays: number;
-  purchaseBelow: string;
-  responseDays: number;
 };
 type HistoryEvent = {
   workId: string;
@@ -60,20 +58,18 @@ type DemoState = {
   terms: Record<string, Terms>;
   history: HistoryEvent[];
 };
-const store = "artwork-commons:demo:v2";
+const store = "artwork-commons:demo:v3";
 const makeTerms = (id: string): Terms => ({
   id,
   royaltyBps: 500,
   holdDays: 180,
-  purchaseBelow: "0.4",
-  responseDays: 14,
 });
 const initial: DemoState = {
   works: [
     {
       id: "blue-mountain",
       artist: "EON MUN",
-      termsId: "blue-mountain-terms",
+      termsId: "standard-artwork-v1",
       title: "Blue Mountain",
       medium: "Acrylic and gold leaf on linen",
       dimensions: "48 × 116 inches",
@@ -85,7 +81,7 @@ const initial: DemoState = {
     {
       id: "quiet-tide",
       artist: "EON MUN",
-      termsId: "quiet-tide-terms",
+      termsId: "standard-artwork-v1",
       title: "Quiet Tide",
       medium: "Oil on canvas",
       dimensions: "60 × 80 cm",
@@ -96,7 +92,7 @@ const initial: DemoState = {
     {
       id: "after-the-rain",
       artist: "EON MUN",
-      termsId: "after-the-rain-terms",
+      termsId: "standard-artwork-v1",
       title: "After the Rain",
       medium: "Pigment and graphite on paper",
       dimensions: "42 × 60 cm",
@@ -107,7 +103,7 @@ const initial: DemoState = {
     {
       id: "folded-light",
       artist: "Mika Sato",
-      termsId: "folded-light-terms",
+      termsId: "standard-artwork-v1",
       title: "Folded Light",
       medium: "Porcelain and glaze",
       dimensions: "32 × 18 × 18 cm",
@@ -119,7 +115,7 @@ const initial: DemoState = {
     {
       id: "red-earth",
       artist: "Mika Sato",
-      termsId: "red-earth-terms",
+      termsId: "standard-artwork-v1",
       title: "Red Earth",
       medium: "Mineral pigment on paper",
       dimensions: "40 × 60 cm",
@@ -128,15 +124,7 @@ const initial: DemoState = {
       variant: 2,
     },
   ],
-  terms: Object.fromEntries(
-    [
-      "blue-mountain",
-      "quiet-tide",
-      "after-the-rain",
-      "folded-light",
-      "red-earth",
-    ].map((id) => [id + "-terms", makeTerms(id + "-terms")]),
-  ),
+  terms: { "standard-artwork-v1": makeTerms("standard-artwork-v1") },
   shows: [
     {
       id: "tokyo",
@@ -306,6 +294,14 @@ export default function Demo({ page }: { page: string }) {
     setNotice(message);
   }
   function buy(w: Work, via: string, showId?: string) {
+    if (w.resaleAfter && new Date(w.resaleAfter).getTime() > Date.now()) {
+      setNotice(
+        "Standard terms: resale locked until " +
+          w.resaleAfter +
+          ". This is simulated; the local contract demo enforces the same 180-day period on chain.",
+      );
+      return;
+    }
     if (w.owner !== w.artist) {
       setNotice(
         "This work is in a private collection. Its history and canonical terms remain available.",
@@ -442,7 +438,7 @@ export default function Demo({ page }: { page: string }) {
                     imageURI: String(f.get("image")),
                     manifestURI: String(f.get("manifest")),
                   };
-                  w.termsId = w.id + "-terms";
+                  w.termsId = "standard-artwork-v1";
                   update(
                     {
                       ...state,
@@ -900,20 +896,16 @@ function TermsView({ work, terms }: { work: Work; terms: Terms }) {
         <dd>
           {terms.holdDays} days after purchase.
           {work.resaleAfter
-            ? " Next proposed resale date: " + work.resaleAfter + "."
+            ? " Next permitted resale date: " + work.resaleAfter + "."
             : " Starts after the first purchase."}
-        </dd>
-        <dt>Artist purchase option</dt>
-        <dd>
-          Before a resale below {terms.purchaseBelow} ETH, offer {work.artist}{" "}
-          the same price and terms, with {terms.responseDays} days to respond.
         </dd>
       </dl>
       <p>
-        The holding period and purchase option are illustrative agreement
-        clauses, not protections enforced by the current contracts. Royalties
-        are accounted for by supported settlement transactions. Gallery
-        commission is agreed separately for each sale.
+        Every work uses the same fixed policy: 180 days between ownership
+        changes and 5% artist royalty on supported resales. This page simulates
+        the policy; the local contract demo enforces it on chain. Primary sales
+        are exempt. Gallery commission is agreed separately. These artwork terms
+        cannot be customized.
       </p>
       <a href="/docs/#terms">See how terms and enforcement work ↗</a>
     </>

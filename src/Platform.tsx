@@ -1,4 +1,5 @@
 "use client";
+import PageSkeleton, { CollectionSkeleton } from "./PageSkeleton";
 import defaults from "./demo-defaults.json";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -117,12 +118,19 @@ export default function Platform({ page }: { page: string }) {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [balance, setBalance] = useState(0n);
   const [galleryOwner, setGalleryOwner] = useState("");
+  const [artistOwner, setArtistOwner] = useState("");
+  const [dataLoading, setDataLoading] = useState(true);
+  const refreshGeneration = useRef(0);
   const [payouts, setPayouts] = useState<{ address: string; amount: bigint }[]>(
     [],
   );
   const [activeArt, setActiveArt] = useState("");
   const [showId, setShowId] = useState("");
   const gallery = page === "gallery";
+  const managingGallery =
+    gallery ||
+    ((page === "artwork" || page === "exhibition") &&
+      same(account, galleryOwner));
   function restore(a?: Address) {
     accountRef.current = a;
     setAccount(a);
@@ -152,8 +160,15 @@ export default function Platform({ page }: { page: string }) {
     const n = { ...ctxRef.current, ...patch };
     ctxRef.current = n;
     setContext(n);
-    if (accountRef.current)
+    if (accountRef.current) {
       localStorage.setItem(storageKey(accountRef.current), JSON.stringify(n));
+      // Keep resumable deployments for each independently managed name.
+      for (const name of [n.parent, n.galleryName].filter(Boolean))
+        localStorage.setItem(
+          storageKey(accountRef.current) + ":" + name,
+          JSON.stringify(n),
+        );
+    }
     return n;
   }
   function url(
@@ -257,7 +272,14 @@ export default function Platform({ page }: { page: string }) {
         const allowed = await access(name, account);
         result.push({ name, allowed });
       }
-      if (!gone) setNames(result);
+      if (!gone) {
+        setNames(result);
+        const parent = gallery
+          ? ctxRef.current.galleryName
+          : ctxRef.current.parent;
+        if (result.some((n) => n.name === parent && n.allowed))
+          setChosen(parent);
+      }
     })()
       .catch((e) => !gone && setNameError(e.message))
       .finally(() => !gone && setFinding(false));
@@ -288,6 +310,52 @@ export default function Platform({ page }: { page: string }) {
       functionName: "hasRoles",
       args: [resource, 1n << 20n, a],
     });
+  }
+  async function chooseNamespace(name: string) {
+    if (!account || !config || !name) return;
+    if (!(await access(name, account)))
+      throw Error("This wallet cannot manage that name.");
+    setChosen(name);
+    const current = managingGallery
+      ? ctxRef.current.galleryName
+      : ctxRef.current.parent;
+    if (current === name) return;
+    const previous = JSON.parse(
+      localStorage.getItem(storageKey(account) + ":" + name) || "{}",
+    );
+    const namespace = await client.readContract({
+      address: config.ens.ETHRegistry,
+      abi: parentAbi,
+      functionName: "getSubregistry",
+      args: [name.split(".")[0]],
+    });
+    let child = "";
+    if (namespace !== zeroAddress) {
+      try {
+        child = await read(namespace, "ParticipantRegistry", "getSubregistry", [
+          managingGallery ? "exhibitions" : "art",
+        ]);
+      } catch {
+        /* setup checks compatibility */
+      }
+    }
+    if (child === zeroAddress) child = "";
+    save(
+      managingGallery
+        ? {
+            galleryName: name,
+            galleryNamespace: namespace === zeroAddress ? "" : namespace,
+            galleryRegistry: child,
+          }
+        : {
+            parent: name,
+            namespace: namespace === zeroAddress ? "" : namespace,
+            artwork: child,
+            mandates: previous.artwork === child ? previous.mandates || "" : "",
+            settlement:
+              previous.artwork === child ? previous.settlement || "" : "",
+          },
+    );
   }
   async function connect() {
     const { account: a } = await wallet();
@@ -368,122 +436,167 @@ export default function Platform({ page }: { page: string }) {
         }
       }
     }
-    return { ...g, id, tokenId, owner, address, settlement, direct };
+    // Older Sepolia registries are readable but must not be labelled as enforcing this policy.
+    let termsId: string | undefined,
+      unlockAt = 0,
+      saleAllowed = true;
+    try {
+      termsId = await read(address, "ArtworkRegistry", "TERMS_ID");
+      unlockAt = Number(
+        await read(address, "ArtworkRegistry", "resaleAllowedAt", [id]),
+      );
+      saleAllowed = await read(address, "ArtworkRegistry", "saleAllowed", [id]);
+    } catch {
+      /* legacy registry */
+    }
+    return {
+      ...g,
+      id,
+      tokenId,
+      owner,
+      address,
+      settlement,
+      direct,
+      termsId,
+      unlockAt,
+      saleAllowed,
+    };
   }
   async function refresh() {
     if (!config) return;
-    const c = ctxRef.current;
-    setBlock(String(await client.getBlockNumber()));
-    const works = [];
-    if (isAddress(c.artwork)) {
-      const count = Number(
-        await read(c.artwork, "ArtworkRegistry", "recordCount"),
-      );
-      for (let i = 0; i < Math.min(count, 100); i++) {
-        works.push(
-          await artwork(
-            c.artwork,
-            await read(c.artwork, "ArtworkRegistry", "recordId", [BigInt(i)]),
-            c.settlement,
-          ),
+    const generation = ++refreshGeneration.current;
+    setDataLoading(true);
+    try {
+      const c = ctxRef.current;
+      setBlock(String(await client.getBlockNumber()));
+      const works = [];
+      if (isAddress(c.artwork)) {
+        const owner = await read(c.artwork, "ArtworkRegistry", "artist");
+        if (generation === refreshGeneration.current) setArtistOwner(owner);
+        const count = Number(
+          await read(c.artwork, "ArtworkRegistry", "recordCount"),
         );
-      }
-    }
-    setArtworks(works);
-    const exhibits = [],
-      pending = [];
-    if (isAddress(c.galleryRegistry)) {
-      setGalleryOwner(
-        await read(c.galleryRegistry, "GalleryRegistry", "gallery"),
-      );
-      const count = Number(
-        await read(c.galleryRegistry, "GalleryRegistry", "recordCount"),
-      );
-      for (let i = 0; i < Math.min(count, 100); i++) {
-        const id = await read(
-          c.galleryRegistry,
-          "GalleryRegistry",
-          "recordId",
-          [BigInt(i)],
-        );
-        exhibits.push({
-          ...(await read(c.galleryRegistry, "GalleryRegistry", "exhibition", [
-            id,
-          ])),
-          id,
-        });
-      }
-      const n = Number(
-        await read(c.galleryRegistry, "GalleryRegistry", "submissionCount"),
-      );
-      for (let i = 1; i <= Math.min(n, 100); i++) {
-        const [
-          exhibitionId,
-          mandates,
-          mandateId,
-          settlement,
-          submitter,
-          status,
-        ] = await read(c.galleryRegistry, "GalleryRegistry", "submissions", [
-          BigInt(i),
-        ]);
-        const m = await read(mandates, "MandateRegistry", "get", [mandateId]);
-        const registry = await read(mandates, "MandateRegistry", "artwork");
-        const a = await artwork(registry, m.tokenId, settlement);
-        let offer = null;
-        const lc = Number(await read(settlement, "SimpleSettlement", "count"));
-        for (let j = lc; j > Math.max(0, lc - 100); j--) {
-          const l = await read(settlement, "SimpleSettlement", "listings", [
-            BigInt(j),
-          ]);
-          if (
-            l[0] === mandateId &&
-            !l[3] &&
-            (await read(mandates, "MandateRegistry", "active", [
-              mandateId,
-              257n,
-            ]))
-          ) {
-            offer = { id: BigInt(j), price: l[1] };
-            break;
-          }
+        for (let i = 0; i < Math.min(count, 100); i++) {
+          works.push(
+            await artwork(
+              c.artwork,
+              await read(c.artwork, "ArtworkRegistry", "recordId", [BigInt(i)]),
+              c.settlement,
+            ),
+          );
         }
-        pending.push({
-          id: BigInt(i),
-          exhibitionId,
-          mandates,
-          mandateId,
-          settlement,
-          submitter,
-          status,
-          m,
-          art: a,
-          offer,
-        });
       }
-    } else setGalleryOwner("");
-    setShows(exhibits);
-    setSubmissions(pending);
-    const a = accountRef.current;
-    const pays = [];
-    if (a) {
-      for (const address of new Set<string>(
-        [c.settlement, ...pending.map((s) => s.settlement)]
-          .filter((x) => isAddress(x))
-          .map((x) => x.toLowerCase()),
-      )) {
-        pays.push({
-          address,
-          amount: await read(address, "SimpleSettlement", "proceeds", [a]),
-        });
+      if (generation !== refreshGeneration.current) return;
+      setArtworks(works);
+      const exhibits = [],
+        pending = [];
+      if (isAddress(c.galleryRegistry)) {
+        setGalleryOwner(
+          await read(c.galleryRegistry, "GalleryRegistry", "gallery"),
+        );
+        const count = Number(
+          await read(c.galleryRegistry, "GalleryRegistry", "recordCount"),
+        );
+        for (let i = 0; i < Math.min(count, 100); i++) {
+          const id = await read(
+            c.galleryRegistry,
+            "GalleryRegistry",
+            "recordId",
+            [BigInt(i)],
+          );
+          exhibits.push({
+            ...(await read(c.galleryRegistry, "GalleryRegistry", "exhibition", [
+              id,
+            ])),
+            id,
+          });
+        }
+        const n = Number(
+          await read(c.galleryRegistry, "GalleryRegistry", "submissionCount"),
+        );
+        for (let i = 1; i <= Math.min(n, 100); i++) {
+          const [
+            exhibitionId,
+            mandates,
+            mandateId,
+            settlement,
+            submitter,
+            status,
+          ] = await read(c.galleryRegistry, "GalleryRegistry", "submissions", [
+            BigInt(i),
+          ]);
+          const m = await read(mandates, "MandateRegistry", "get", [mandateId]);
+          const registry = await read(mandates, "MandateRegistry", "artwork");
+          const a = await artwork(registry, m.tokenId, settlement);
+          let offer = null;
+          const lc = Number(
+            await read(settlement, "SimpleSettlement", "count"),
+          );
+          for (let j = lc; j > Math.max(0, lc - 100); j--) {
+            const l = await read(settlement, "SimpleSettlement", "listings", [
+              BigInt(j),
+            ]);
+            if (
+              l[0] === mandateId &&
+              !l[3] &&
+              (await read(mandates, "MandateRegistry", "active", [
+                mandateId,
+                257n,
+              ]))
+            ) {
+              offer = { id: BigInt(j), price: l[1] };
+              break;
+            }
+          }
+          pending.push({
+            id: BigInt(i),
+            exhibitionId,
+            mandates,
+            mandateId,
+            settlement,
+            submitter,
+            status,
+            m,
+            art: a,
+            offer,
+            permissions: await read(mandates, "MandateRegistry", "hasRoles", [
+              mandateId,
+              m.roles,
+              m.gallery,
+            ]),
+            active: await read(mandates, "MandateRegistry", "active", [
+              mandateId,
+              16n,
+            ]),
+          });
+        }
+      } else setGalleryOwner("");
+      if (generation !== refreshGeneration.current) return;
+      setShows(exhibits);
+      setSubmissions(pending);
+      const a = accountRef.current;
+      const pays = [];
+      if (a) {
+        for (const address of new Set<string>(
+          [c.settlement, ...pending.map((s) => s.settlement)]
+            .filter((x) => isAddress(x))
+            .map((x) => x.toLowerCase()),
+        )) {
+          pays.push({
+            address,
+            amount: await read(address, "SimpleSettlement", "proceeds", [a]),
+          });
+        }
       }
+      setPayouts(pays);
+      setBalance(
+        a && isAddress(c.settlement)
+          ? await read(c.settlement, "SimpleSettlement", "proceeds", [a])
+          : 0n,
+      );
+    } finally {
+      if (generation === refreshGeneration.current) setDataLoading(false);
     }
-    setPayouts(pays);
-    setBalance(
-      a && isAddress(c.settlement)
-        ? await read(c.settlement, "SimpleSettlement", "proceeds", [a])
-        : 0n,
-    );
   }
   async function setup() {
     if (!config || !chosen) throw Error("Choose an ENS name first.");
@@ -714,6 +827,14 @@ export default function Platform({ page }: { page: string }) {
   const ready = gallery
     ? isAddress(ctx.galleryRegistry)
     : isAddress(ctx.artwork) && isAddress(ctx.settlement);
+  const managedParent = names.find(
+    (n) =>
+      n.allowed && n.name === (managingGallery ? ctx.galleryName : ctx.parent),
+  )?.name;
+  const managedName = managedParent
+    ? (managingGallery ? "exhibitions." : "art.") + managedParent
+    : "";
+  if (!config && !error) return <PageSkeleton page={page} />;
   return (
     <>
       <header>
@@ -729,9 +850,45 @@ export default function Platform({ page }: { page: string }) {
           <a href="/demo/artist/">Try demo</a>
           <a href="/docs/">How it works</a>
         </nav>
-        <button className="wallet" disabled={busy} onClick={() => act(connect)}>
-          {account ? short(account) : "Connect wallet ↗"}
-        </button>
+        <div className="wallet-context">
+          {account && (
+            <label className="namespace-control">
+              <span>
+                Managing {managingGallery ? "gallery" : "artist"} namespace
+              </span>
+              <select
+                aria-label="Managed namespace"
+                disabled={busy || finding}
+                value={managedParent || ""}
+                onChange={(e) =>
+                  void act(() => chooseNamespace(e.target.value))
+                }
+              >
+                <option value="">
+                  {finding
+                    ? "Checking name permissions…"
+                    : "Choose a namespace…"}
+                </option>
+                {names
+                  .filter((n) => n.allowed)
+                  .map((n) => (
+                    <option key={n.name} value={n.name}>
+                      {managingGallery ? "exhibitions." : "art."}
+                      {n.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          <button
+            className="wallet"
+            disabled={busy}
+            onClick={() => act(connect)}
+            title={account || "Connect wallet"}
+          >
+            {account ? short(account) : "Connect wallet ↗"}
+          </button>
+        </div>
       </header>
       <div className="network">
         <span>
@@ -743,7 +900,12 @@ export default function Platform({ page }: { page: string }) {
           {block ? "BLOCK " + Number(block).toLocaleString() : "CONNECTING…"}
         </span>
       </div>
-      <main className="page">
+      <main
+        className={
+          "page workspace-" +
+          (gallery || page === "exhibition" ? "gallery" : "artist")
+        }
+      >
         {config?.localDemo && (
           <section className="panel">
             <h2>Seeded local-chain demo</h2>
@@ -766,6 +928,19 @@ export default function Platform({ page }: { page: string }) {
                 ),
               )}
             </div>
+            <details>
+              <summary>Seed transaction evidence</summary>
+              <p>
+                These receipts come from deployment, minting and purchase
+                transactions on this local chain. Collected Study is already
+                collector-owned and locked for 180 days.
+              </p>
+              {config.localDemo.transactions?.map((t) => (
+                <p className="mono" key={t.hash}>
+                  {t.action} · block {t.blockNumber} · {t.hash}
+                </p>
+              ))}
+            </details>
             <p>
               IPFS defaults are bundled sample fixtures, not uploads or public
               pinning.
@@ -782,12 +957,37 @@ export default function Platform({ page }: { page: string }) {
           </section>
         )}
 
+        <nav className="workspace-nav" aria-label="Workspace navigation">
+          <a
+            href={url("/artist/")}
+            aria-current={page === "artist" ? "page" : undefined}
+          >
+            Artist studio
+          </a>
+          <a
+            href={url("/gallery/")}
+            aria-current={page === "gallery" ? "page" : undefined}
+          >
+            Gallery programme
+          </a>
+          <span>
+            {managedName ||
+              (account
+                ? "Viewing · choose a namespace to manage"
+                : "Connect a wallet to manage your work")}
+          </span>
+        </nav>
         {(error || message || busy) && (
           <div
             className={"notice " + (error ? "error" : "")}
             role={error ? "alert" : "status"}
           >
             {error || message || "Waiting for wallet…"}
+            {tx && config?.localDemo && (
+              <p className="mono">
+                Confirmed or pending local transaction: {tx}
+              </p>
+            )}
             {tx && !config?.localDemo && (
               <a
                 href={"https://sepolia.etherscan.io/tx/" + tx}
@@ -865,9 +1065,10 @@ export default function Platform({ page }: { page: string }) {
                 <>
                   <p className="mono">Connected: {account}</p>
                   {finding && (
-                    <p role="status">
-                      Finding your ENS names and checking permissions…
-                    </p>
+                    <div
+                      className="skeleton skeleton-title"
+                      aria-label="Finding ENS names"
+                    />
                   )}
                   {nameError && <p role="alert">{nameError}</p>}
                   <label>
@@ -875,7 +1076,9 @@ export default function Platform({ page }: { page: string }) {
                     <select
                       aria-label="ENS name"
                       value={chosen}
-                      onChange={(e) => setChosen(e.target.value)}
+                      onChange={(e) =>
+                        void act(() => chooseNamespace(e.target.value))
+                      }
                       disabled={finding || busy}
                     >
                       <option value="">Choose a name…</option>
@@ -958,86 +1161,95 @@ export default function Platform({ page }: { page: string }) {
         )}
         {page === "artist" && ready && (
           <>
-            <form
-              className="panel"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                void act(async () => {
-                  const a = accountRef.current;
-                  if (!a) throw Error("Connect wallet.");
-                  const manifest = field(f, "manifest");
-                  await write(ctx.artwork, "ArtworkRegistry", "issue", [
-                    {
-                      label: field(f, "label"),
-                      title: field(f, "title"),
-                      year: Number(field(f, "year")),
-                      medium: field(f, "medium"),
-                      dimensions: field(f, "dimensions"),
-                      imageURI: field(f, "image"),
-                      manifestURI: manifest,
-                      contenthash: contentHash(manifest),
-                      agreementURI: "",
-                      agreementHash: zeroHash,
-                      artist: a,
-                      royaltyRecipient: a,
-                      royaltyBps: Number(field(f, "royalty")),
-                    },
-                  ]);
-                  setMessage("Artwork issued. Genesis is permanently locked.");
-                });
-              }}
-            >
-              <h2>Create artwork</h2>
-              <div className="config-grid">
-                <Input
-                  label="Title"
-                  name="title"
-                  value={config?.localDemo ? "Mountain Study" : ""}
-                />
-                <Input
-                  label="Artwork label"
-                  name="label"
-                  value={config?.localDemo ? "mountain-study" : ""}
-                />
-                <Input label="Year" name="year" type="number" value="2026" />
-                <Input
-                  label="Medium"
-                  name="medium"
-                  value={config?.localDemo ? "Oil on canvas" : ""}
-                />
-                <Input
-                  label="Dimensions"
-                  name="dimensions"
-                  value={config?.localDemo ? "60 × 80 cm" : ""}
-                />
-                <Input
-                  label="Artist royalty (basis points)"
-                  name="royalty"
-                  type="number"
-                  value="500"
-                />
-                <Input
-                  label="Image IPFS URI"
-                  name="image"
-                  value={config?.localDemo ? defaults.image : ""}
-                />
-                <Input
-                  label="Manifest IPFS URI"
-                  name="manifest"
-                  value={config?.localDemo ? defaults.manifest : ""}
-                />
-              </div>
-              <button className="button dark" disabled={busy || !account}>
-                Issue & lock genesis ↗
-              </button>
-            </form>
+            {same(account, artistOwner) && (
+              <form
+                className="panel"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  void act(async () => {
+                    const a = accountRef.current;
+                    if (!a) throw Error("Connect wallet.");
+                    const manifest = field(f, "manifest");
+                    await write(ctx.artwork, "ArtworkRegistry", "issue", [
+                      {
+                        label: field(f, "label"),
+                        title: field(f, "title"),
+                        year: Number(field(f, "year")),
+                        medium: field(f, "medium"),
+                        dimensions: field(f, "dimensions"),
+                        imageURI: field(f, "image"),
+                        manifestURI: manifest,
+                        contenthash: contentHash(manifest),
+                        agreementURI: "",
+                        agreementHash: zeroHash,
+                        artist: a,
+                        royaltyRecipient: a,
+                        royaltyBps: 500,
+                      },
+                    ]);
+                    setMessage(
+                      "Artwork issued. Genesis is permanently locked.",
+                    );
+                  });
+                }}
+              >
+                <h2>Create artwork</h2>
+                <div className="config-grid">
+                  <Input
+                    label="Title"
+                    name="title"
+                    value={config?.localDemo ? "Mountain Study" : ""}
+                  />
+                  <Input
+                    label="Artwork label"
+                    name="label"
+                    value={config?.localDemo ? "mountain-study" : ""}
+                  />
+                  <Input label="Year" name="year" type="number" value="2026" />
+                  <Input
+                    label="Medium"
+                    name="medium"
+                    value={config?.localDemo ? "Oil on canvas" : ""}
+                  />
+                  <Input
+                    label="Dimensions"
+                    name="dimensions"
+                    value={config?.localDemo ? "60 × 80 cm" : ""}
+                  />
+                  <p className="notice">
+                    Standard artwork terms · 5% artist resale royalty · 180-day
+                    transfer hold after each ownership change. First sale is
+                    available immediately. These terms cannot be customized.
+                  </p>
+                  <Input
+                    label="Image IPFS URI"
+                    name="image"
+                    value={config?.localDemo ? defaults.image : ""}
+                  />
+                  <Input
+                    label="Manifest IPFS URI"
+                    name="manifest"
+                    value={config?.localDemo ? defaults.manifest : ""}
+                  />
+                </div>
+                <button className="button dark" disabled={busy || !account}>
+                  Issue & lock genesis ↗
+                </button>
+              </form>
+            )}
             <h2>Your collection</h2>
-            <div className="catalogue">{artworks.map(card)}</div>
-            {!artworks.length && <p>Your first artwork will appear here.</p>}
+            {dataLoading ? (
+              <CollectionSkeleton />
+            ) : (
+              <div className="catalogue">{artworks.map(card)}</div>
+            )}
+            {!dataLoading && !artworks.length && (
+              <p>Your first artwork will appear here.</p>
+            )}
           </>
         )}
-        {page === "gallery" && ready && (
+        {page === "gallery" && ready && same(account, galleryOwner) && (
           <>
             <form
               className="panel"
@@ -1118,7 +1330,12 @@ export default function Platform({ page }: { page: string }) {
             </div>
           </>
         )}
+        {dataLoading &&
+          (page === "artwork" ||
+            page === "exhibition" ||
+            page === "gallery") && <CollectionSkeleton />}
         {page === "artwork" &&
+          !dataLoading &&
           (!selected ? (
             <>
               <h1>Artwork</h1>
@@ -1145,6 +1362,50 @@ export default function Platform({ page }: { page: string }) {
                       {Number(selected.royaltyBps) / 100}% within settlement
                     </dd>
                   </dl>
+                  <section
+                    className="canonical-terms"
+                    aria-label="Canonical artwork terms"
+                  >
+                    <h2>Standard artwork terms</h2>
+                    {selected.termsId ? (
+                      <>
+                        <p>
+                          5% artist resale royalty. 180-day transfer hold after
+                          each ownership change. Primary sale is exempt from the
+                          hold and royalty.
+                        </p>
+                        <p role="status">
+                          {selected.saleAllowed
+                            ? "Available for sale under the standard terms."
+                            : "Resale locked until " +
+                              new Date(
+                                selected.unlockAt * 1000,
+                              ).toLocaleString() +
+                              ". Exhibitions remain possible."}
+                        </p>
+                        <details>
+                          <summary>Verify on-chain record</summary>
+                          <p className="mono">Registry: {selected.address}</p>
+                          <p className="mono">
+                            Token: {String(selected.tokenId)}
+                          </p>
+                          <p className="mono">
+                            Canonical policy: {selected.termsId}
+                          </p>
+                          <p>
+                            Ownership, policy and unlock date above are read
+                            from this registry.
+                          </p>
+                        </details>
+                      </>
+                    ) : (
+                      <p role="alert">
+                        Legacy registry: this artwork does not enforce the
+                        standard holding period. Deploy a new registry to use
+                        this policy.
+                      </p>
+                    )}
+                  </section>
                   <a
                     href={config?.ipfsGateway + selected.manifestURI.slice(7)}
                     target="_blank"
@@ -1213,7 +1474,10 @@ export default function Platform({ page }: { page: string }) {
                       name="price"
                       value="0.01"
                     />
-                    <button className="button" disabled={busy}>
+                    <button
+                      className="button"
+                      disabled={busy || !selected.saleAllowed}
+                    >
                       List for direct sale ↗
                     </button>
                     <p>
@@ -1246,7 +1510,7 @@ export default function Platform({ page }: { page: string }) {
                             parseEther(field(f, "price")),
                             Number(field(f, "commission")),
                             ttl(),
-                            273n,
+                            BigInt(field(f, "scope") || "273"),
                           ],
                         );
                         const r = await receipt(h);
@@ -1290,6 +1554,22 @@ export default function Platform({ page }: { page: string }) {
                   >
                     <h2>Submit to an exhibition</h2>
                     <label>
+                      Gallery authority
+                      <select name="scope" defaultValue="273">
+                        <option value="273">
+                          Exhibit and sell within the standard terms
+                        </option>
+                        <option value="16">
+                          Exhibition loan only · no sale authority
+                        </option>
+                      </select>
+                    </label>
+                    <p>
+                      Loan exhibition and sale authority to this gallery. You
+                      retain the NFT until a permitted sale. The standard
+                      holding period still applies.
+                    </p>
+                    <label>
                       Exhibition
                       <select
                         aria-label="Exhibition"
@@ -1324,6 +1604,77 @@ export default function Platform({ page }: { page: string }) {
                   </form>
                 </div>
               )}
+              <section className="panel">
+                <h2>Gallery permissions</h2>
+                {submissions
+                  .filter(
+                    (s) =>
+                      same(s.art.address, selected.address) &&
+                      key(s.art.id) === key(selected.id),
+                  )
+                  .map((s) => (
+                    <div className="submission" key={String(s.id)}>
+                      <p>
+                        Gallery {short(s.m.gallery)} ·{" "}
+                        {s.active
+                          ? "Accepted exhibition authority"
+                          : s.m.revoked
+                            ? "Revoked"
+                            : "Pending or inactive"}
+                      </p>
+                      <p>
+                        {s.m.roles === 16n
+                          ? "Exhibition loan only"
+                          : "Exhibit, list and sell"}{" "}
+                        · minimum {formatEther(s.m.minPrice)} test ETH ·{" "}
+                        {Number(s.m.commissionBps) / 100}% gallery commission ·
+                        expires{" "}
+                        {new Date(Number(s.m.expires) * 1000).toLocaleString()}
+                      </p>
+                      <p>
+                        The gallery cannot change the original artwork record or
+                        bypass its holding period.
+                      </p>
+                      <details>
+                        <summary>Verify access controls</summary>
+                        <p className="mono">
+                          ENSv2 EnhancedAccessControl · mandate resource{" "}
+                          {String(s.mandateId)} · bitmap {String(s.m.roles)} ·
+                          hasRoles: {String(s.permissions)}
+                        </p>
+                        <p>
+                          Effective exhibition authority: {String(s.active)}.
+                          Acceptance, expiry and ownership epoch are checked
+                          separately from role assignment.
+                        </p>
+                      </details>
+                      {same(account, selected.owner) && !s.m.revoked && (
+                        <button
+                          className="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void act(() =>
+                              write(s.mandates, "MandateRegistry", "revoke", [
+                                s.mandateId,
+                              ]),
+                            )
+                          }
+                        >
+                          Revoke gallery permissions
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                {!submissions.some(
+                  (s) =>
+                    same(s.art.address, selected.address) &&
+                    key(s.art.id) === key(selected.id),
+                ) && (
+                  <p>
+                    No gallery submissions in the selected exhibition registry.
+                  </p>
+                )}
+              </section>
               <p className="fine">
                 Buying the NFT records token ownership. Physical delivery is
                 arranged separately.
@@ -1331,6 +1682,7 @@ export default function Platform({ page }: { page: string }) {
             </>
           ))}
         {page === "exhibition" &&
+          !dataLoading &&
           (!currentShow ? (
             <>
               <h1>Exhibition</h1>
@@ -1383,6 +1735,13 @@ export default function Platform({ page }: { page: string }) {
                     <article className="panel art-card" key={String(s.id)}>
                       {image(s.art)}
                       <h2>{s.art.title}</h2>
+                      {!s.art.saleAllowed && (
+                        <p>
+                          Resale locked until{" "}
+                          {new Date(s.art.unlockAt * 1000).toLocaleDateString()}
+                          . Exhibition remains permitted.
+                        </p>
+                      )}
                       <p>
                         Artist {short(s.art.artist)} · Owner{" "}
                         {short(s.art.owner)}
@@ -1429,7 +1788,12 @@ export default function Platform({ page }: { page: string }) {
                         same(account, galleryOwner) && (
                           <button
                             className="button"
-                            disabled={busy}
+                            disabled={
+                              busy ||
+                              !s.art.saleAllowed ||
+                              !s.active ||
+                              (s.m.roles & 257n) !== 257n
+                            }
                             onClick={() =>
                               act(() =>
                                 write(

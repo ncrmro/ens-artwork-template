@@ -36,6 +36,13 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
         string agreementURI; bytes32 agreementHash; address artist; address royaltyRecipient; uint96 royaltyBps;
     }
     struct Presentation { string publicLocation; string ownerWebsite; address author; uint64 timestamp; }
+    // One immutable policy for every work in this version. No owner/admin setter.
+    uint64 public constant HOLD_SECONDS = 180 days;
+    uint96 public constant ROYALTY_BPS = 500;
+    bytes32 public constant TERMS_ID = keccak256("artwork-commons:v1:hold-180-days:resale-royalty-500bps");
+    mapping(uint256 => uint64) private transferUnlocks;
+    error HoldingPeriodActive(uint64 unlockAt);
+    event HoldingPeriodStarted(uint256 indexed tokenId, uint64 unlockAt);
     address public immutable artist;
     bytes32 public immutable namespaceNode;
     ArtResolver public immutable artworkResolver;
@@ -62,7 +69,8 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
         require(bytes(g.medium).length>0 && bytes(g.medium).length<=256 && bytes(g.dimensions).length<=128, "Medium required");
         require(_ipfs(g.imageURI) && _ipfs(g.manifestURI), "IPFS image and manifest required");
         require((bytes(g.agreementURI).length == 0 && g.agreementHash == bytes32(0)) || (_ipfs(g.agreementURI) && g.agreementHash != bytes32(0)), "Agreement URI and hash required together");
-        require(g.royaltyRecipient != address(0) && g.royaltyBps <= 10000, "Invalid royalty");
+        require(g.royaltyRecipient == artist && g.royaltyBps == ROYALTY_BPS, "Canonical royalty required");
+        require(bytes(g.agreementURI).length == 0 && g.agreementHash == bytes32(0), "Canonical terms only");
         uint256 id = uint256(keccak256(l));
         require(bytes(records[key(id)].label).length == 0, "Already issued");
         records[key(id)] = g;
@@ -83,13 +91,27 @@ contract ArtworkRegistry is PermissionedRegistry, IRegistryURIRenderer {
         presentations[key(id)] = Presentation(location, website, msg.sender, uint64(block.timestamp));
         emit PresentationUpdated(id,msg.sender,location,website);
     }
+    function resaleAllowedAt(uint256 id) public view returns(uint64) { return transferUnlocks[key(id)]; }
+    function saleAllowed(uint256 id) public view returns(bool) {
+        return bytes(records[key(id)].label).length != 0 && block.timestamp >= resaleAllowedAt(id);
+    }
+    // Check before the ERC-1155 receiver callback, including approved operators.
+    function _beforeTransfer(uint256 id,uint256 amount) private {
+        if(amount == 0) return;
+        uint256 k = key(id);
+        uint64 unlockAt = transferUnlocks[k];
+        if(block.timestamp < unlockAt) revert HoldingPeriodActive(unlockAt);
+        ++epochs[k];
+        transferUnlocks[k] = uint64(block.timestamp) + HOLD_SECONDS;
+        emit HoldingPeriodStarted(id,transferUnlocks[k]);
+    }
     function safeTransferFrom(address from,address to,uint256 id,uint256 value,bytes memory data) public override(ERC1155Singleton,IERC1155) {
-        if(value>0) ++epochs[key(id)]; // before receiver callback; prevents mandate resurrection on round trips
+        _beforeTransfer(id,value);
         super.safeTransferFrom(from,to,id,value,data);
     }
     function safeBatchTransferFrom(address from,address to,uint256[] memory tokenIds,uint256[] memory values,bytes memory data) public override(ERC1155Singleton,IERC1155) {
         require(tokenIds.length==values.length,"Length mismatch");
-        for(uint256 i; i<tokenIds.length; ++i) if(values[i]>0) ++epochs[key(tokenIds[i])];
+        for(uint256 i; i<tokenIds.length; ++i) _beforeTransfer(tokenIds[i],values[i]);
         super.safeBatchTransferFrom(from,to,tokenIds,values,data);
     }
     function renderURI(IRegistry registry,uint256 id) external view returns(string memory) { require(address(registry)==address(this),"Wrong registry"); return records[key(id)].manifestURI; }

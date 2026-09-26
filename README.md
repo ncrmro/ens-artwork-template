@@ -15,7 +15,7 @@ A Next.js platform for artists and galleries to deploy their own ENS v2 registri
 3. A gallery deploys `exhibitions.gallery.eth` and creates an exhibition before receiving any artwork. It shares the exhibition invitation with artists.
 4. An artist opens that invitation, selects their own work, and submits it with a scoped, expiring gallery mandate and agreed commission. NFT ownership stays with the artist.
 5. The gallery accepts the mandate and submission, then lists at the agreed minimum price. An exhibition can accept works from different artists and settlement contracts.
-6. A collector buys from the exhibition, or buys an owner's direct listing on the artwork page. Settlement transfers the NFT and credits proceeds atomically. Gallery sales pay commission; direct sales do not. Resales through this settlement credit the configured artist royalty.
+6. A collector buys from the exhibition, or buys an owner's direct listing on the artwork page. Settlement transfers the NFT and credits proceeds atomically. Gallery sales pay commission; direct sales do not. Resales through this settlement credit the standard 5% artist royalty.
 
 The creator and genesis remain unchanged after purchase. Gallery exhibition records remain attributed history. Prior commercial mandates become inactive when ownership changes.
 
@@ -62,7 +62,7 @@ Legacy ArtRegistry/ArtSale/EvmExample contracts remain as examples with their te
 
 The UI reads at most 100 artworks, exhibitions, submissions and recent listings per selected registry. ENS discovery is an indexer dependency and can lag; a manual name check verifies new names onchain. It currently supports normalized ASCII second-level .eth parents. IPFS content must be pinned. Parent renewal and pointer control remain the parent owner's responsibility.
 
-Royalties apply inside these settlement contracts; ERC-2981 does not enforce royalties on outside marketplaces. Physical custody, delivery, legal execution, holding periods, right of first refusal, museums and conservation remain future work. An exhibition statement does not prove possession.
+Royalties apply inside these settlement contracts; ERC-2981 does not enforce royalties on outside marketplaces. Physical custody, delivery, legal execution, right of first refusal, museums and conservation remain future work. An exhibition statement does not prove possession.
 
 See [requirements](requirements.md), [acceptance](docs/acceptance.md), and [architecture](docs/lifecycle.md). Transaction tests use an isolated EVM; real Sepolia receipts still require participant signatures.
 
@@ -76,4 +76,6 @@ The homepage explains the platform for artists, galleries and collectors. `/docs
 
 The wallet-free `/demo/` story now includes EON MUN and fictional artist Mika Sato, Atelier and Harbour galleries, three exhibitions and successive collectors Alex Chen and Rowan Ellis. Blue Mountain keeps the same artist and terms record as it moves between collections and exhibitions. Artwork pages scope the timeline to that work; exhibition cards link to the same canonical terms.
 
-This richer narrative is mock data, separate from the official local-chain seed. Holding periods and artist purchase options are displayed as proposed agreement clauses, not claimed as newly enforced contract features. Run `npm run test:story` against the recorded local URL or set `BASE_URL` for a deployed site.
+This richer narrative is mock data, separate from the official local-chain seed. New local registries enforce the shared 180-day transfer hold and 5% resale royalty policy. The story demo simulates the same fixed policy. Artist purchase options remain future work. Run `npm run test:story` against the recorded local URL or set `BASE_URL` for a deployed site.
+
+New artwork registries reject custom clauses. Every first sale is immediately available; subsequent ownership transfers wait 180 days. The interface shows live unlock dates and gallery permissions. `npm run local:verify:policy` verifies successful and reverted transactions on the official ENSv2 devnet, restoring a snapshot afterward. Older Sepolia registries require redeployment to gain the policy.

@@ -17,7 +17,6 @@ contract SimpleSettlement is ReentrancyGuard {
     uint256 public count;
     mapping(uint256=>Listing) public listings;
     mapping(address=>uint256) public proceeds;
-    mapping(uint256=>bool) private previouslySold;
     event Listed(uint256 indexed id,uint256 indexed mandateId,uint256 price);
     event Settled(uint256 indexed id,uint256 indexed tokenId,address indexed buyer,address seller,uint256 price,uint256 commission,uint256 royalty);
     event Withdrawn(address indexed recipient,uint256 amount);
@@ -32,6 +31,7 @@ contract SimpleSettlement is ReentrancyGuard {
         _linked();
         MandateRegistry.Mandate memory m=mandates.get(mandateId);
         require(msg.sender==m.gallery && mandates.active(mandateId,257),"Sale mandate inactive");
+        require(artwork.saleAllowed(m.tokenId),"Artwork holding period active");
         require(price>=m.minPrice,"Below minimum price");
         id=++count; listings[id]=Listing(mandateId,price,uint64(block.timestamp),false); emit Listed(id,mandateId,price);
     }
@@ -45,9 +45,7 @@ contract SimpleSettlement is ReentrancyGuard {
         l.sold=true;
         uint256 commission=Math.mulDiv(msg.value,m.commissionBps,10000);
         (address recipient,uint256 royalty)=artwork.royaltyInfo(m.tokenId,msg.value);
-        uint256 k=artwork.key(m.tokenId);
-        if(!previouslySold[k] && m.owner==artwork.artist()) royalty=0;
-        previouslySold[k]=true;
+        if(artwork.ownershipEpoch(m.tokenId)==0 && m.owner==artwork.artist()) royalty=0;
         require(commission+royalty<=msg.value,"Invalid split");
         proceeds[m.gallery]+=commission; proceeds[recipient]+=royalty; proceeds[m.owner]+=msg.value-commission-royalty;
         saleReceipt[id]=SaleReceipt(msg.sender,m.owner,m.tokenId,msg.value,commission,royalty,uint64(block.timestamp));
@@ -61,6 +59,7 @@ contract SimpleSettlement is ReentrancyGuard {
     event DirectPurchased(uint256 indexed id,uint256 indexed tokenId,address indexed buyer,uint256 royalty);
     function listDirect(uint256 tokenId,uint256 price,uint64 expires) external returns(uint256 id) {
         _linked(); require(artwork.ownerOf(tokenId)==msg.sender,"Only current owner");
+        require(artwork.saleAllowed(tokenId),"Artwork holding period active");
         require(price>0 && expires>block.timestamp,"Invalid price or expiry");
         id=++directCount; directListings[id]=DirectListing(tokenId,msg.sender,artwork.ownershipEpoch(tokenId),price,expires,false);
         emit DirectListed(id,tokenId,msg.sender,price);
@@ -68,15 +67,14 @@ contract SimpleSettlement is ReentrancyGuard {
     function cancelDirect(uint256 id) external { require(directListings[id].seller==msg.sender,"Only seller"); directListings[id].sold=true; }
     function directActive(uint256 id) public view returns(bool) {
         DirectListing memory d=directListings[id];
-        return d.price>0 && !d.sold && d.expires>block.timestamp && artwork.ownerOf(d.tokenId)==d.seller && artwork.ownershipEpoch(d.tokenId)==d.epoch;
+        return artwork.saleAllowed(d.tokenId) && d.price>0 && !d.sold && d.expires>block.timestamp && artwork.ownerOf(d.tokenId)==d.seller && artwork.ownershipEpoch(d.tokenId)==d.epoch;
     }
     function buyDirect(uint256 id) external payable nonReentrant {
         _linked(); require(directActive(id),"Direct listing inactive");
         DirectListing storage d=directListings[id]; require(msg.value==d.price && msg.sender!=d.seller,"Invalid buyer or payment");
         d.sold=true; (address recipient,uint256 royalty)=artwork.royaltyInfo(d.tokenId,msg.value);
-        uint256 k=artwork.key(d.tokenId);
-        if(!previouslySold[k] && d.seller==artwork.artist()) royalty=0;
-        previouslySold[k]=true; proceeds[recipient]+=royalty; proceeds[d.seller]+=msg.value-royalty;
+        if(artwork.ownershipEpoch(d.tokenId)==0 && d.seller==artwork.artist()) royalty=0;
+        proceeds[recipient]+=royalty; proceeds[d.seller]+=msg.value-royalty;
         artwork.safeTransferFrom(d.seller,msg.sender,d.tokenId,1,"");
         emit DirectPurchased(id,d.tokenId,msg.sender,royalty);
     }

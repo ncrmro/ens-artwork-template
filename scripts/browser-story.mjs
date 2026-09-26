@@ -27,21 +27,21 @@ try {
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.locator("#terms")).toContainText("blue-mountain-terms");
+  await expect(page.locator("#terms")).toContainText("standard-artwork-v1");
   await expect(page.locator("#terms")).toContainText("180 days");
-  await expect(page.locator("#terms")).toContainText("14 days");
+  await expect(page.locator("#terms")).not.toContainText(
+    "Artist purchase option",
+  );
   await expect(page.locator("#terms")).toContainText("5%");
   await expect(
     page.getByRole("heading", { name: "Created by Mika Sato", exact: true }),
   ).toHaveCount(0);
-  const shows = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Exhibition history",
-        exact: true,
-      }),
-    });
+  const shows = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "Exhibition history",
+      exact: true,
+    }),
+  });
   await expect(shows.getByRole("link")).toHaveCount(3);
   await shows
     .getByRole("link", { name: "Material & Memory", exact: true })
@@ -55,7 +55,7 @@ try {
     .filter({ hasText: "Blue Mountain" })
     .getByRole("link", { name: "Canonical artwork terms" })
     .click();
-  await expect(page.locator("#terms")).toContainText("blue-mountain-terms");
+  await expect(page.locator("#terms")).toContainText("standard-artwork-v1");
   await page.goto(base + "/demo/artist/");
   await page.getByLabel("Browse artist").selectOption("Mika Sato");
   await expect(page.locator(".art-card")).toHaveCount(2);
@@ -110,7 +110,7 @@ try {
     page.getByRole("heading", { name: "The contract map" }),
   ).toBeVisible();
   await expect(page.locator("#terms")).toContainText(
-    "No holding-period check is implemented",
+    "ArtworkRegistry rejects single, batch and operator transfers",
   );
   fs.mkdirSync("output", { recursive: true });
   await page.screenshot({ path: "output/story-docs.png", fullPage: true });

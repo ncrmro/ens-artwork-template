@@ -90,6 +90,7 @@ export type Config = {
   };
   localDemo?: {
     runId: string;
+    transactions?: { action: string; hash: string; blockNumber: number }[];
     accounts: Record<string, Address>;
     context: Record<string, string>;
   };

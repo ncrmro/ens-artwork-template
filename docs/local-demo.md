@@ -42,3 +42,13 @@ Stop and restart `local:chain` for a fresh deterministic deployment and seed. Wa
 `npm run local:verify` performs browser transactions against the running app: artwork creation, exhibition creation, gallery acceptance/listing, gallery and direct purchases, ownership and payout readback, withdrawal, refresh and IPFS defaults. It snapshots the chain and restores it afterward. Run it when nobody else is using the demo, since restoration discards transactions made during verification.
 
 On this checkout the primary app is managed by `eonmun-beta-local.service` and the chain by `eonmun-local-chain.service` (user systemd services). Restart the chain service to reset the seed; monitor `journalctl --user -u eonmun-local-chain.service -f` for readiness.
+
+## Canonical policy and real permission evidence
+
+All newly deployed artwork registries use the same immutable `TERMS_ID`: 180 days between ownership transfers and 5% artist royalties on supported resales. Artists cannot choose alternative terms. The initial sale is immediate; gallery loans retain token ownership and do not reset the clock. Single, batch and operator transfers all enforce the hold. Right of first refusal remains future work.
+
+The seed now includes **Collected Study**, actually bought by the collector and locked on chain. Other works remain available for the live artist → exhibition → gallery acceptance → collector purchase flow. Expand **Seed transaction evidence** for mint/deployment/purchase hashes. The artwork page reads its owner, unlock time and scoped gallery permissions from the contracts.
+
+`npm run local:verify:policy` sends real successful and reverting transactions against the official local ENSv2 deployment. It verifies role escalation rejection, holding-period enforcement, an exhibition loan during the hold, a sale after advancing local block time, 5% royalty accounting, invalidation and revocation. It snapshots and restores the visible demo; verification receipts are diagnostic and cease to exist after the revert. Seed receipts remain available. The web API does not expose time-travel methods.
+
+Select an accessible name in the top-right namespace control. Artist and gallery pages maintain distinct workspaces; the selector verifies current ENS subregistry permission. Switching demo accounts does not imply control of the displayed collection.

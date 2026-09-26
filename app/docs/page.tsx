@@ -157,7 +157,12 @@ export default function Docs() {
             Name permissions and gallery mandates are separate. Permission to
             manage a name does not itself authorize a gallery sale. Application
             mandates are scoped to the artwork, current owner and ownership
-            epoch.
+            epoch. MandateRegistry directly inherits the pinned ENSv2
+            EnhancedAccessControl implementation: resource = mandate ID, LIST =
+            1, EXHIBIT = 16, SELL = 256. The gallery receives regular roles, not
+            role-administration powers or artwork ownership. Revocation removes
+            those roles; acceptance, expiry and ownership epoch add lifecycle
+            checks.
           </p>
           <p>
             <a href="https://github.com/ensdomains/contracts-v2/tree/48b3e2d39513b9dd32ef1850877a29009bc807b9">
@@ -168,12 +173,14 @@ export default function Docs() {
           </p>
         </section>
         <section className="section" id="terms">
-          <h2>One canonical terms record per artwork</h2>
+          <h2>One standard policy for every artwork</h2>
           <p>
-            The story demo stores one terms record per artwork. Every exhibition
-            points back to it. Artist resale royalties belong to the artwork;
-            gallery commission belongs to a particular mandate or sale. They are
-            not interchangeable.
+            Every newly issued artwork uses the same immutable policy,
+            identified by ArtworkRegistry.TERMS_ID. Every exhibition points back
+            to that work. Neither artists nor galleries can customize its
+            clauses. Artist resale royalties belong to the artwork; gallery
+            commission belongs to a particular mandate or sale. They are not
+            interchangeable.
           </p>
           <div className="table-scroll">
             <table>
@@ -189,30 +196,23 @@ export default function Docs() {
                   <td>Artist royalty</td>
                   <td>5% of a supported resale to the original artist.</td>
                   <td>
-                    Royalty recipient and basis points are immutable genesis
-                    fields. SimpleSettlement accounts for royalties on supported
-                    resales; the original artist’s primary sale is exempt.
+                    New registries require exactly 500 basis points payable to
+                    the original artist. SimpleSettlement credits this on
+                    supported resales; the original artist’s primary sale is
+                    exempt.
                   </td>
                 </tr>
                 <tr>
                   <td>Holding period</td>
                   <td>
-                    180 days after a purchase, with a proposed next-sale date.
+                    180 days after each ownership transfer; first sale is
+                    immediate.
                   </td>
                   <td>
-                    Illustrative agreement clause only. No holding-period check
-                    is implemented.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Artist purchase option</td>
-                  <td>
-                    Before a resale below 0.4 ETH, offer the artist the same
-                    price and terms, with 14 days to respond.
-                  </td>
-                  <td>
-                    Illustrative agreement clause only. Notification, exercise,
-                    expiry and sale-blocking logic are not implemented.
+                    ArtworkRegistry rejects single, batch and operator transfers
+                    before resaleAllowedAt. Both listing paths check
+                    saleAllowed. The clock uses block timestamps. Exhibition
+                    loans remain possible.
                   </td>
                 </tr>
                 <tr>
@@ -227,11 +227,12 @@ export default function Docs() {
             </table>
           </div>
           <p>
-            The existing genesis schema includes an optional agreementURI and
-            agreementHash pair for identifying an agreement document. The
-            expanded story’s clauses currently live in demo state; they are not
-            newly deployed agreement contracts. A production terms document
-            would need its own pinned content, hash and matching implementation.
+            The policy is compiled into the registry with no setter. New
+            issuance rejects alternative royalties and custom agreement fields.
+            An artist purchase option is future work and is not included in the
+            current canonical policy. Existing deployed contracts are immutable
+            and do not gain this policy through a website update; legacy
+            registries are labelled in the interface.
           </p>
           <p>
             ERC-2981 reports royalty information; it does not enforce payment

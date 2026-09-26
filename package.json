@@ -23,6 +23,7 @@
     "local:dev": "LOCAL_CHAIN=1 node scripts/dev.mjs",
     "local:fixtures": "node scripts/local/fixtures.mjs",
     "local:verify": "node scripts/local/verify.mjs",
+    "local:verify:policy": "node scripts/local/verify-policy.mjs",
     "test:story": "node scripts/browser-story.mjs"
   },
   "dependencies": {

@@ -123,7 +123,7 @@ async function fixture() {
   };
   await write(artist, artwork, "ArtworkRegistry", "issue", [genesis]);
   const token = await read(artwork, "ArtworkRegistry", "getTokenId", [labelId]);
-  const expiry = (await pc.getBlock()).timestamp + 3600n;
+  const expiry = (await pc.getBlock()).timestamp + 730n * 86400n;
   const grant = async (
     signer = artist,
     roles = 273n,
@@ -339,6 +339,11 @@ test("independent artist/gallery registries: immutable genesis, authority withou
   await assert.rejects(() =>
     write(bob, settlement, "SimpleSettlement", "buy", [1n], parseEther("1")),
   );
+  await f.conn.provider.request({
+    method: "evm_increaseTime",
+    params: [180 * 86400],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
   const second = await f.grant(bob, 273n, parseEther("2"));
   await write(gallery, mandates, "MandateRegistry", "accept", [second]);
   await write(gallery, settlement, "SimpleSettlement", "list", [
@@ -455,6 +460,11 @@ test("mandate revocation, expiry, insufficient scope, parent unlink and ownershi
     1n,
     "0x",
   ]);
+  await f.conn.provider.request({
+    method: "evm_increaseTime",
+    params: [180 * 86400],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
   await write(bob, artwork, "ArtworkRegistry", "safeTransferFrom", [
     bob.account.address,
     artist.account.address,
@@ -466,6 +476,11 @@ test("mandate revocation, expiry, insufficient scope, parent unlink and ownershi
     await read(mandates, "MandateRegistry", "active", [second, 257n]),
     false,
   );
+  await f.conn.provider.request({
+    method: "evm_increaseTime",
+    params: [180 * 86400],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
   const third = await f.grant();
   await write(gallery, mandates, "MandateRegistry", "accept", [third]);
   await write(artist, f.root, "TestParent", "setChild", [bob.account.address]);
@@ -595,6 +610,11 @@ test("gallery creates an empty exhibition, artist submits, gallery accepts, coll
       expiry,
     ]),
   );
+  await f.conn.provider.request({
+    method: "evm_increaseTime",
+    params: [180 * 86400],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
   await write(bob, settlement, "SimpleSettlement", "listDirect", [
     current,
     parseEther("2"),
@@ -720,5 +740,153 @@ test("direct primary sale, cancellation and stale direct listing cannot transfer
   assert.equal(
     await read(settlement, "SimpleSettlement", "directActive", [3n]),
     false,
+  );
+});
+
+test("canonical terms reject customization and enforce holds across gallery, direct, batch and operator transfers", async () => {
+  const f = await fixture();
+  const {
+    artist,
+    gallery,
+    bob,
+    carol,
+    artwork,
+    mandates,
+    settlement,
+    token,
+    genesis,
+    read,
+    write,
+    expiry,
+  } = f;
+  for (const change of [
+    { royaltyBps: 0 },
+    { royaltyRecipient: bob.account.address },
+    { agreementURI: ipfs, agreementHash: keccak256(stringToHex("custom")) },
+  ]) {
+    await assert.rejects(() =>
+      write(artist, artwork, "ArtworkRegistry", "issue", [
+        { ...genesis, label: "other", ...change },
+      ]),
+    );
+  }
+  assert.equal(
+    await read(artwork, "ArtworkRegistry", "HOLD_SECONDS"),
+    180n * 86400n,
+  );
+  await write(artist, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    settlement,
+    true,
+  ]);
+  await write(artist, settlement, "SimpleSettlement", "listDirect", [
+    token,
+    parseEther("1"),
+    expiry,
+  ]);
+  await write(
+    bob,
+    settlement,
+    "SimpleSettlement",
+    "buyDirect",
+    [1n],
+    parseEther("1"),
+  );
+  const unlock = await read(artwork, "ArtworkRegistry", "resaleAllowedAt", [
+    token,
+  ]);
+  const current = await read(artwork, "ArtworkRegistry", "getTokenId", [token]);
+  await write(bob, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    carol.account.address,
+    true,
+  ]);
+  await assert.rejects(() =>
+    write(carol, artwork, "ArtworkRegistry", "safeTransferFrom", [
+      bob.account.address,
+      artist.account.address,
+      current,
+      1n,
+      "0x",
+    ]),
+  );
+  await assert.rejects(() =>
+    write(bob, artwork, "ArtworkRegistry", "safeBatchTransferFrom", [
+      bob.account.address,
+      artist.account.address,
+      [current],
+      [1n],
+      "0x",
+    ]),
+  );
+  await assert.rejects(() =>
+    write(bob, settlement, "SimpleSettlement", "listDirect", [
+      current,
+      parseEther("2"),
+      expiry,
+    ]),
+  );
+  const m = await f.grant(bob, 273n, parseEther("2"));
+  await write(gallery, mandates, "MandateRegistry", "accept", [m]);
+  // Exhibition permission remains valid during the hold; sale permission cannot override it.
+  assert.equal(
+    await read(mandates, "MandateRegistry", "active", [m, 16n]),
+    true,
+  );
+  await assert.rejects(() =>
+    write(gallery, settlement, "SimpleSettlement", "list", [
+      m,
+      parseEther("2"),
+    ]),
+  );
+  assert.equal(
+    (await read(artwork, "ArtworkRegistry", "getOwner", [token])).toLowerCase(),
+    bob.account.address,
+  );
+  await f.conn.provider.request({
+    method: "evm_setNextBlockTimestamp",
+    params: [Number(unlock) - 1],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
+  assert.equal(
+    await read(artwork, "ArtworkRegistry", "saleAllowed", [token]),
+    false,
+  );
+  await f.conn.provider.request({
+    method: "evm_setNextBlockTimestamp",
+    params: [Number(unlock)],
+  });
+  await f.conn.provider.request({ method: "evm_mine", params: [] });
+  assert.equal(
+    await read(artwork, "ArtworkRegistry", "saleAllowed", [token]),
+    true,
+  );
+  await write(gallery, settlement, "SimpleSettlement", "list", [
+    m,
+    parseEther("2"),
+  ]);
+  await write(bob, artwork, "ArtworkRegistry", "setApprovalForAll", [
+    settlement,
+    true,
+  ]);
+  await write(
+    carol,
+    settlement,
+    "SimpleSettlement",
+    "buy",
+    [1n],
+    parseEther("2"),
+  );
+  assert.equal(
+    await read(settlement, "SimpleSettlement", "proceeds", [
+      artist.account.address,
+    ]),
+    parseEther("1.1"),
+  );
+  assert.equal(
+    await read(mandates, "MandateRegistry", "active", [m, 273n]),
+    false,
+  );
+  assert.ok(
+    (await read(artwork, "ArtworkRegistry", "resaleAllowedAt", [token])) >
+      unlock,
   );
 });

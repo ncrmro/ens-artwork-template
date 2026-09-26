@@ -35,9 +35,15 @@ export async function seed(env, root) {
       chain: foundry,
       transport: http("http://127.0.0.1:8545"),
     });
-  async function sent(hash) {
+  const transactions = [];
+  async function sent(hash, action = "Deploy registry") {
     const r = await pc.waitForTransactionReceipt({ hash: await hash });
     if (r.status !== "success") throw Error("Seed transaction reverted");
+    transactions.push({
+      action,
+      hash: r.transactionHash,
+      blockNumber: Number(r.blockNumber),
+    });
     return r;
   }
   async function deploy(who, kind, args) {
@@ -52,6 +58,7 @@ export async function seed(env, root) {
         functionName,
         args,
       }),
+      kind + "." + functionName,
     );
   const read = (address, kind, functionName, args = []) =>
     pc.readContract({ address, abi: contracts[kind].abi, functionName, args });
@@ -109,7 +116,14 @@ export async function seed(env, root) {
   const contenthash = (uri) =>
     bytesToHex(new Uint8Array([0xe3, 1, ...CID.parse(uri.slice(7)).bytes]));
   const ids = [];
-  for (const { label, title, manifest } of defaults.works) {
+  for (const { label, title, manifest } of [
+    ...defaults.works,
+    {
+      label: "collected-study",
+      title: "Collected Study",
+      manifest: defaults.manifest,
+    },
+  ]) {
     await write(artist, artwork, "ArtworkRegistry", "issue", [
       {
         label,
@@ -179,6 +193,22 @@ export async function seed(env, root) {
     parseEther("0.2"),
     expires,
   ]);
+  // A real purchased work makes the transfer hold visible immediately.
+  await write(artist, settlement, "SimpleSettlement", "listDirect", [
+    ids[3],
+    parseEther("0.25"),
+    expires,
+  ]);
+  await sent(
+    wc(collector).writeContract({
+      address: settlement,
+      abi: contracts.SimpleSettlement.abi,
+      functionName: "buyDirect",
+      args: [2n],
+      value: parseEther("0.25"),
+    }),
+    "Collector purchase · 180-day hold begins",
+  );
   const context = {
     parent: "eonmun.eth",
     namespace,
@@ -202,6 +232,7 @@ export async function seed(env, root) {
           runId: randomUUID(),
           accounts: { artist, gallery, collector },
           context,
+          transactions,
         },
       },
       null,

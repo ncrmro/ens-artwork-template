@@ -35,7 +35,7 @@ Browser tests exercise the actual deployment/issuance/delegation/exhibition/purc
 
 ## Future work
 
-Physical handoff, verified custody, legal execution, ROFR, holding periods, cross-market royalty enforcement, museum workflows and conservator dashboards are explicitly outside this build.
+Physical handoff, verified custody, legal execution, ROFR, cross-market royalty enforcement, museum workflows and conservator dashboards are explicitly outside this build.
 
 ## Sources
 
@@ -51,3 +51,7 @@ The platform now uses Next.js App Router static exports on the existing Worker. 
 GalleryRegistry.createExhibition creates the immutable exhibition identity before submissions. submit binds an exhibition to a current-owner mandate and its matching settlement. The gallery separately accepts the mandate then decides the submission. acceptedSubmissions provides the accepted set without a centralized application database. Multiple artists can submit through their own mandate and settlement contracts.
 
 SimpleSettlement adds direct owner listings with expiry, cancellation, current token/version and ownership epoch validation. Direct and gallery settlements share royalty accounting. The website remains a reference interface, while contracts are the live system of record. Demo pages import a separate local component with sessionStorage and no wallet or chain access.
+
+## Standard artwork policy
+
+New ArtworkRegistry deployments use a fixed 180-day hold after every ownership transfer and a 5% original-artist royalty on supported resales. The first transfer is immediately permitted. Single, batch and operator transfers enforce the hold, while exhibition mandates retain token ownership. Terms are constants, not user configuration. SimpleSettlement identifies primary sales using the registry ownership epoch, so deploying a second settlement cannot reset primary-sale eligibility.

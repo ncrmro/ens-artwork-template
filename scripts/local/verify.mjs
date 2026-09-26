@@ -90,7 +90,7 @@ try {
   await expect(
     page.getByRole("heading", { name: "Mountain Study", exact: true }),
   ).toBeVisible();
-  assert.equal(await read(ctx.artwork, "ArtworkRegistry", "recordCount"), 4n);
+  assert.equal(await read(ctx.artwork, "ArtworkRegistry", "recordCount"), 5n);
   await page
     .locator(".art-card")
     .filter({
