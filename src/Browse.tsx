@@ -219,7 +219,11 @@ export default function Browse({ kind }: { kind: string }) {
                       );
                       if (artistLabel === preferred) {
                         image = genesis.imageURI;
-                        break;
+                        if (
+                          preferred !== "eonmun" ||
+                          genesis.label.startsWith("eonmun-original-")
+                        )
+                          break;
                       }
                     } else break;
                   }
